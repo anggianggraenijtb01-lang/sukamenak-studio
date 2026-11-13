@@ -1,5 +1,6 @@
 import { query } from '../db/pool.js';
 import { AppError } from '../lib/errors.js';
+import { readProviderKey } from '../lib/providerKeyEnv.js';
 import type { Capability, ModelConfigRecord, ProviderAdapter, ProviderName } from './types.js';
 
 const adapters = new Map<ProviderName, ProviderAdapter>();
@@ -30,7 +31,7 @@ export async function listActiveModels(capability: Capability): Promise<ModelCon
       ORDER BY is_default DESC, priority ASC, created_at ASC`,
     [capability],
   );
-  return rows.filter((m) => m.provider === 'mock' || !m.api_key_env || Boolean(process.env[m.api_key_env]));
+  return rows.filter((m) => m.provider === 'mock' || !m.api_key_env || readProviderKey(m.api_key_env) !== undefined);
 }
 
 export type AdapterMethod = 'improveText' | 'analyzeReference' | 'generateImage';

@@ -27,23 +27,23 @@ async function defaultOf(capability: string): Promise<{ id: string; name: string
 
 afterEach(() => {
   registerProvider(createFalProvider());
-  delete process.env.TEST_ADMIN_FAL_KEY;
+  delete process.env.PROVIDER_KEY_TEST_ADMIN_FAL;
 });
 
 describe('admin models', () => {
   it('lists models with the key NAME and a configured flag, never a key value', async () => {
     const admin = await loginSeedAdmin();
-    process.env.TEST_ADMIN_KEY_ENV = 'super-secret-value-123';
+    process.env.PROVIDER_KEY_TEST_ADMIN = 'super-secret-value-123';
     try {
       const created = await as(admin).post('/models', {
         name: `Keyed ${suffix()}`,
         provider: 'fal',
         capability: 't2i',
         model_id: 'fal-ai/test',
-        api_key_env: 'TEST_ADMIN_KEY_ENV',
+        api_key_env: 'PROVIDER_KEY_TEST_ADMIN',
       });
       expect(created.status).toBe(201);
-      expect(created.body.data).toMatchObject({ api_key_env: 'TEST_ADMIN_KEY_ENV', api_key_configured: true, requires_api_key: true, is_active: false, usable: false });
+      expect(created.body.data).toMatchObject({ api_key_env: 'PROVIDER_KEY_TEST_ADMIN', api_key_configured: true, requires_api_key: true, is_active: false, usable: false });
 
       const list = await as(admin).get('/models?limit=100');
       expect(list.status).toBe(200);
@@ -59,7 +59,7 @@ describe('admin models', () => {
       expect((await as(admin).get('/models?capability=vision&active=true')).body.data.every((m: { capability: string }) => m.capability === 'vision')).toBe(true);
       expect(created.body.data.cost_per_call_usd).toBe(0);
     } finally {
-      delete process.env.TEST_ADMIN_KEY_ENV;
+      delete process.env.PROVIDER_KEY_TEST_ADMIN;
     }
   });
 
@@ -75,6 +75,13 @@ describe('admin models', () => {
       'base_url with credentials': { ...base, provider: 'openai_compat', api_key_env: 'OPENAI_API_KEY', base_url: 'https://user:pw@example.com/v1' },
       'base_url with a query string': { ...base, provider: 'openai_compat', api_key_env: 'OPENAI_API_KEY', base_url: 'https://example.com/v1?key=abc' },
       'base_url not http': { ...base, provider: 'openai_compat', api_key_env: 'OPENAI_API_KEY', base_url: 'ftp://example.com' },
+      // An admin must not be able to make the platform send an internal secret to a server they control.
+      'internal secret as key variable (core prompt key)': { ...base, api_key_env: 'CORE_PROMPT_KEY' },
+      'internal secret as key variable (jwt secret)': { ...base, api_key_env: 'JWT_ACCESS_SECRET' },
+      'internal secret as key variable (database url)': { ...base, api_key_env: 'DATABASE_URL' },
+      'base_url at cloud metadata': { ...base, provider: 'openai_compat', api_key_env: 'OPENAI_API_KEY', base_url: 'http://169.254.169.254/latest' },
+      'base_url at localhost': { ...base, provider: 'openai_compat', api_key_env: 'OPENAI_API_KEY', base_url: 'http://localhost:6379' },
+      'base_url at a private address': { ...base, provider: 'openai_compat', api_key_env: 'OPENAI_API_KEY', base_url: 'https://10.0.0.5/v1' },
       'unknown capability': { ...base, capability: 'audio', api_key_env: 'FAL_KEY' },
       'negative cost': { ...base, api_key_env: 'FAL_KEY', cost_per_call_usd: -1 },
       'unknown field': { ...base, api_key_env: 'FAL_KEY', api_key: 'sk-123' },
@@ -218,8 +225,8 @@ describe('admin models', () => {
     expect(noKey.body.data).toMatchObject({ ok: false, error_code: 'PROVIDER_AUTH' });
     expect(noKey.body.data.model.last_test_ok).toBe(false);
 
-    process.env.TEST_ADMIN_FAL_KEY = 'sk-test-secret-key-987';
-    const model = (await as(admin).post('/models', { name: `Fal ${suffix()}`, provider: 'fal', capability: 't2i', model_id: 'fal-ai/x', api_key_env: 'TEST_ADMIN_FAL_KEY', is_active: true })).body.data;
+    process.env.PROVIDER_KEY_TEST_ADMIN_FAL = 'sk-test-secret-key-987';
+    const model = (await as(admin).post('/models', { name: `Fal ${suffix()}`, provider: 'fal', capability: 't2i', model_id: 'fal-ai/x', api_key_env: 'PROVIDER_KEY_TEST_ADMIN_FAL', is_active: true })).body.data;
     expect(model.api_key_configured).toBe(true);
 
     registerProvider({

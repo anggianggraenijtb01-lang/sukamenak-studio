@@ -1,3 +1,5 @@
+import { readProviderKey } from '../../../lib/providerKeyEnv.js';
+
 export interface ModelRow {
   id: string;
   name: string;
@@ -25,7 +27,7 @@ export const requiresApiKey = (provider: string): boolean => provider !== 'mock'
 
 /** Whether the server environment currently provides the key variable this model names. */
 export const isKeyConfigured = (m: Pick<ModelRow, 'provider' | 'api_key_env'>): boolean =>
-  !requiresApiKey(m.provider) || Boolean(m.api_key_env && process.env[m.api_key_env]);
+  !requiresApiKey(m.provider) || readProviderKey(m.api_key_env) !== undefined;
 
 /**
  * Shows the variable NAME and whether it is set, never a key value (the value is not even read into

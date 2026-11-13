@@ -1,16 +1,28 @@
 import { z } from 'zod';
+import { env } from '../../../config/env.js';
+import { isDisallowedHost } from '../../../lib/outboundUrl.js';
+import { isAllowedProviderKeyEnv, PROVIDER_KEY_ENV_RULE } from '../../../lib/providerKeyEnv.js';
 import { boolQuery, idParams, pageFields, requireAnyKey } from '../common.js';
 
 export const PROVIDERS = ['mock', 'openai_compat', 'gemini', 'fal'] as const;
 export const CAPABILITIES = ['vision', 'text', 't2i', 'i2i'] as const;
 
-/** Mirrors the CHECK on model_configs.api_key_env: the NAME of an environment variable, never a key. */
+/**
+ * The NAME of an environment variable, never a key. Beyond the CHECK on model_configs.api_key_env
+ * (shape only) the name must be a provider-key variable: otherwise an admin could name an internal
+ * secret such as CORE_PROMPT_KEY and have it sent to a base_url they control.
+ */
 export const apiKeyEnvName = z
   .string()
   .regex(/^[A-Z][A-Z0-9_]*$/, 'Harus berupa nama variabel lingkungan (huruf besar, angka, garis bawah), bukan nilai API key')
-  .max(80);
+  .max(80)
+  .refine(isAllowedProviderKeyEnv, PROVIDER_KEY_ENV_RULE);
 
-/** http(s) URL without embedded credentials or a query string (keys must never ride along in a URL). */
+/**
+ * http(s) URL without embedded credentials or a query string (keys must never ride along in a URL),
+ * pointing at a public host, and https in production. The server calls this URL with the provider key
+ * attached, so it must not be steerable at loopback, private or cloud-metadata addresses.
+ */
 const baseUrl = z
   .string()
   .trim()
@@ -22,7 +34,15 @@ const baseUrl = z
     } catch {
       return false;
     }
-  }, 'Gunakan URL http(s) tanpa kredensial, query, atau fragment');
+  }, 'Gunakan URL http(s) tanpa kredensial, query, atau fragment')
+  .refine((v) => {
+    try {
+      const u = new URL(v);
+      return env.ALLOW_PRIVATE_PROVIDER_HOSTS || (!isDisallowedHost(u.hostname) && (!env.isProduction || u.protocol === 'https:'));
+    } catch {
+      return false;
+    }
+  }, 'URL harus menuju host publik (bukan localhost/jaringan privat) dan memakai https di production');
 
 const fields = {
   name: z.string().trim().min(2).max(80),

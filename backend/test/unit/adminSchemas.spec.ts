@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { isAllowedProviderKeyEnv } from '../../src/lib/providerKeyEnv.js';
 import { apiKeyEnvName, createModelSchemas } from '../../src/modules/admin/models/schemas.js';
 import { createZoneSchemas, updateTemplateSchemas } from '../../src/modules/admin/templates/schemas.js';
 import { normaliseBlockedTerms } from '../../src/modules/admin/settings/service.js';
@@ -21,7 +22,10 @@ describe('Zod schemas mirror the database CHECK constraints', () => {
     expect(pattern).toBeTruthy();
     const db = new RegExp(pattern as string);
     for (const value of ['GEMINI_API_KEY', 'A', 'FAL_KEY', 'sk-123', 'gemini_key', '1KEY', 'KEY WITH SPACE', 'KEY-DASH', '', 'KEY\n', 'a'.repeat(5)]) {
-      expect(apiKeyEnvName.safeParse(value).success, value).toBe(db.test(value) && value.length <= 80 && value !== 'KEY\n');
+      // The DB CHECK only constrains the shape; the schema additionally restricts the name to provider-key variables.
+      expect(apiKeyEnvName.safeParse(value).success, value).toBe(
+        db.test(value) && value.length <= 80 && value !== 'KEY\n' && isAllowedProviderKeyEnv(value),
+      );
     }
   });
 

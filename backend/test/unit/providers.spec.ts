@@ -19,11 +19,11 @@ beforeAll(async () => {
 });
 
 afterEach(() => {
-  delete process.env.TEST_PROVIDER_KEY;
+  delete process.env.PROVIDER_KEY_TEST;
 });
 
 function config(over: Partial<ModelConfigRecord> = {}): ModelConfigRecord {
-  process.env.TEST_PROVIDER_KEY = KEY;
+  process.env.PROVIDER_KEY_TEST = KEY;
   return {
     id: 'cfg-1',
     name: 'Test model',
@@ -31,7 +31,7 @@ function config(over: Partial<ModelConfigRecord> = {}): ModelConfigRecord {
     capability: 'i2i',
     model_id: 'gpt-image-1',
     base_url: 'https://api.example.test/v1',
-    api_key_env: 'TEST_PROVIDER_KEY',
+    api_key_env: 'PROVIDER_KEY_TEST',
     is_default: true,
     is_active: true,
     priority: 100,
@@ -228,7 +228,7 @@ describe('openai_compat adapter', () => {
   it('is unusable without its key variable and does not call the network', async () => {
     const { fetch, calls } = fakeFetch(() => json({}));
     const cfg = config();
-    delete process.env.TEST_PROVIDER_KEY;
+    delete process.env.PROVIDER_KEY_TEST;
     const err = (await createOpenAiCompatProvider({ fetch }).generateImage!(cfg, genInput()).catch((e: unknown) => e)) as ProviderError;
     expect(err.code).toBe('PROVIDER_AUTH');
     expect(calls).toHaveLength(0);
