@@ -1,10 +1,27 @@
+import { env } from '../config/env.js';
+import { assertPublicHost } from '../lib/outboundUrl.js';
+import { readProviderKey } from '../lib/providerKeyEnv.js';
 import { ProviderError, isProviderError, providerErrorFromStatus } from './errors.js';
 import type { ImageInput, ModelConfigRecord } from './types.js';
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
-/** Looked up at call time so tests can stub `globalThis.fetch` after the adapter was created. */
-export const defaultFetch: FetchLike = (input, init) => globalThis.fetch(input, init);
+/**
+ * Looked up at call time so tests can stub `globalThis.fetch` after the adapter was created.
+ * The host is checked right before the call (unless private hosts are explicitly allowed) and
+ * redirects are refused, so a provider response cannot bounce the request, with its credentials,
+ * to an internal address.
+ */
+export const defaultFetch: FetchLike = async (input, init) => {
+  if (!env.ALLOW_PRIVATE_PROVIDER_HOSTS) {
+    try {
+      await assertPublicHost(input);
+    } catch {
+      throw new ProviderError('PROVIDER_BAD_REQUEST');
+    }
+  }
+  return globalThis.fetch(input, { ...init, redirect: 'error' });
+};
 
 export interface ProviderDeps {
   fetch?: FetchLike;
@@ -12,7 +29,7 @@ export interface ProviderDeps {
 
 /** API key from the environment variable NAMED by the config. Throws PROVIDER_AUTH when it is not set. */
 export function requireApiKey(config: ModelConfigRecord): string {
-  const key = config.api_key_env ? process.env[config.api_key_env] : undefined;
+  const key = readProviderKey(config.api_key_env);
   if (!key) throw new ProviderError('PROVIDER_AUTH');
   return key;
 }

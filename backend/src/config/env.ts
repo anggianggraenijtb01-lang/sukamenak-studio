@@ -72,6 +72,8 @@ const schema = z
     IMPROVE_RATE_LIMIT_PER_MINUTE: intFromString(10, 1),
     /** Per admin: model test calls and core prompt test renders per minute (a model test may call a paid API). */
     ADMIN_TEST_RATE_LIMIT_PER_MINUTE: intFromString(10, 1),
+    /** Lets model base_url (and provider-returned image URLs) point at private addresses, e.g. a local inference node. */
+    ALLOW_PRIVATE_PROVIDER_HOSTS: boolish.default('false'),
 
     // Provider key variable names only; values are read lazily by providers (Phase B).
     DEEPSEEK_API_KEY: optionalString,
