@@ -1,0 +1,153 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# Throwaway CI-only values. Nothing here is a real secret; production secrets never live in the repository.
+env:
+  NODE_ENV: development
+  DATABASE_URL: postgres://sukamenak:sukamenak@localhost:5432/sukamenak
+  DATABASE_URL_TEST: postgres://sukamenak:sukamenak@localhost:5432/sukamenak_test
+  REDIS_URL: redis://localhost:6379
+  JWT_ACCESS_SECRET: ci-access-secret-0123456789abcdef0123456789abcdef
+  JWT_REFRESH_SECRET: ci-refresh-secret-fedcba9876543210fedcba9876543210
+  # 32 bytes, base64 (test-only key)
+  CORE_PROMPT_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+  QUEUE_DRIVER: inline
+  STORAGE_DRIVER: local
+  BCRYPT_COST: '4'
+
+jobs:
+  backend:
+    name: backend (typecheck, migrate, test + coverage, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sukamenak
+          POSTGRES_PASSWORD: sukamenak
+          POSTGRES_DB: sukamenak
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sukamenak -d sukamenak"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      # MinIO is deliberately NOT started here: test/integration/storageS3.spec.ts probes the endpoint and skips itself
+      # when it is unreachable. To run it in CI, add a minio service plus a `mc mb` step and set S3_* variables.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Migrate (development database)
+        run: npm run migrate
+
+      # Global setup creates and migrates sukamenak_test, truncates it and seeds it before the first spec.
+      - name: Test with coverage (unit + integration + security; threshold 70% lines)
+        run: npm run test:coverage
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage
+          if-no-files-found: ignore
+
+  # Builds the frontend and scans dist/assets/*.js for core prompt text and the old AES key.
+  # The frontend still ships a mock core prompt and key (cleaned up in Phase D), so this job is expected to fail today.
+  # It is advisory (continue-on-error) until then: make it blocking by removing `continue-on-error` after Phase D.
+  prompt-leak-bundle:
+    name: prompt-leak-bundle (advisory until Phase D)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sukamenak
+          POSTGRES_PASSWORD: sukamenak
+          POSTGRES_DB: sukamenak
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sukamenak -d sukamenak"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build frontend
+        working-directory: frontend
+        # frontend/ has no lockfile yet, so `npm install` (not `npm ci`).
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Install backend
+        working-directory: backend
+        run: npm ci
+
+      - name: Prompt-leak spec against frontend/dist
+        working-directory: backend
+        run: |
+          test -d ../frontend/dist/assets
+          npx vitest run test/security/prompt-leak.spec.ts
+
+      - name: Frontend source scan (informational)
+        working-directory: backend
+        env:
+          CHECK_FRONTEND_SOURCE: '1'
+        run: npx vitest run test/security/frontend-source-leak.spec.ts
