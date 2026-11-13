@@ -1,0 +1,82 @@
+# Local infrastructure for Sukamenak Studio backend (development only).
+# Credentials below are throwaway dev values; never reuse them elsewhere.
+# The postgres host port is 5433 so a locally installed PostgreSQL on 5432 does not clash.
+name: sukamenak-studio
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: sukamenak-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sukamenak
+      POSTGRES_PASSWORD: sukamenak
+      POSTGRES_DB: sukamenak
+    ports:
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+    volumes:
+      - sukamenak_pgdata:/var/lib/postgresql/data
+      # Creates the `sukamenak_test` database on first initialisation of the volume.
+      - ./backend/docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sukamenak -d sukamenak"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: sukamenak-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      - sukamenak_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # S3-compatible object storage. Chainguard publishes the maintained minio image
+  # (minio/minio is no longer pullable from Docker Hub or quay.io).
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    container_name: sukamenak-minio
+    restart: unless-stopped
+    user: "0:0"
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "${MINIO_API_HOST_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_HOST_PORT:-9001}:9001"
+    volumes:
+      - sukamenak_miniodata:/data
+
+  # One-shot job: creates the `sukamenak` bucket (works with any S3-compatible endpoint).
+  minio-init:
+    image: amazon/aws-cli:latest
+    container_name: sukamenak-minio-init
+    depends_on:
+      - minio
+    restart: "no"
+    environment:
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      AWS_DEFAULT_REGION: us-east-1
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        until aws --endpoint-url http://minio:9000 s3api list-buckets >/dev/null 2>&1; do sleep 1; done
+        aws --endpoint-url http://minio:9000 s3api head-bucket --bucket sukamenak 2>/dev/null \
+          || aws --endpoint-url http://minio:9000 s3api create-bucket --bucket sukamenak
+        echo "bucket sukamenak ready"
+
+volumes:
+  sukamenak_pgdata:
+  sukamenak_redisdata:
+  sukamenak_miniodata:
