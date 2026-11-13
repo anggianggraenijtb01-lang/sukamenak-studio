@@ -1,5 +1,6 @@
 import { env } from '../config/env.js';
-import { assertPublicHost } from '../lib/outboundUrl.js';
+import { Agent } from 'undici';
+import { guardedLookup, isDisallowedHost } from '../lib/outboundUrl.js';
 import { readProviderKey } from '../lib/providerKeyEnv.js';
 import { ProviderError, isProviderError, providerErrorFromStatus } from './errors.js';
 import type { ImageInput, ModelConfigRecord } from './types.js';
@@ -8,19 +9,32 @@ export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
 
 /**
  * Looked up at call time so tests can stub `globalThis.fetch` after the adapter was created.
- * The host is checked right before the call (unless private hosts are explicitly allowed) and
- * redirects are refused, so a provider response cannot bounce the request, with its credentials,
- * to an internal address.
+ * Unless private hosts are explicitly allowed, literal internal hosts are refused up front and every
+ * hostname is resolved by `guardedLookup` at connection time, so the address that is validated is
+ * the one that is connected to (a rebinding DNS answer cannot swap it in between). Redirects are
+ * refused, so a provider response cannot bounce the request, with its credentials, inward.
  */
+const guardedAgent = new Agent({ connect: { lookup: guardedLookup } });
+
 export const defaultFetch: FetchLike = async (input, init) => {
-  if (!env.ALLOW_PRIVATE_PROVIDER_HOSTS) {
-    try {
-      await assertPublicHost(input);
-    } catch {
-      throw new ProviderError('PROVIDER_BAD_REQUEST');
-    }
+  if (env.ALLOW_PRIVATE_PROVIDER_HOSTS) return globalThis.fetch(input, { ...init, redirect: 'error' });
+
+  let hostname: string;
+  try {
+    hostname = new URL(input).hostname;
+  } catch {
+    throw new ProviderError('PROVIDER_BAD_REQUEST');
   }
-  return globalThis.fetch(input, { ...init, redirect: 'error' });
+  if (isDisallowedHost(hostname)) throw new ProviderError('PROVIDER_BAD_REQUEST');
+
+  try {
+    // `dispatcher` is undici's extension to fetch and is missing from the DOM RequestInit type.
+    return await globalThis.fetch(input, { ...init, redirect: 'error', dispatcher: guardedAgent } as unknown as RequestInit);
+  } catch (err) {
+    // A refused host is a configuration error, not a transient outage: do not let the queue retry it.
+    if ((err as { cause?: { code?: string } })?.cause?.code === 'EBLOCKEDHOST') throw new ProviderError('PROVIDER_BAD_REQUEST');
+    throw err;
+  }
 };
 
 export interface ProviderDeps {

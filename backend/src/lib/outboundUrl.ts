@@ -1,44 +1,61 @@
 /**
  * Guards for URLs the server will call on an admin's behalf (model `base_url`, and image URLs a
  * provider hands back). The platform must not be usable as a proxy into its own network: loopback,
- * private, link-local (cloud metadata at 169.254.169.254) and unique-local addresses are refused.
+ * private, link-local (cloud metadata at 169.254.169.254), unique-local and transition-mechanism
+ * (IPv4-mapped/compatible, NAT64, 6to4, Teredo) addresses are refused.
  *
- * Two layers: `isDisallowedHost` rejects literal hosts when the config is saved, and `assertPublicHost`
- * also resolves the name right before a request, which catches a public-looking name that points
- * inward. Resolution and connection are separate steps, so a DNS-rebinding attacker can still race
- * them; that gap is only closed by pinning the resolved address, which fetch does not offer.
+ * Two layers, because the admin who picks the URL may also run the DNS server behind it:
+ *   - `isDisallowedHost` rejects literal hosts (and names like localhost) when the config is saved
+ *     and again before each request. Run it on `new URL(...).hostname`: the URL parser normalises
+ *     `[::ffff:127.0.0.1]` to `[::ffff:7f00:1]`, `2130706433` to `127.0.0.1`, and so on.
+ *   - `guardedLookup` is installed as the connection's DNS lookup (see providers/http.ts), so the
+ *     address that is validated is the very address that is connected to. A check done before the
+ *     request and a connection made after it could be raced with a rebinding DNS answer; this cannot.
+ *
  * Operators who really need a private inference node set ALLOW_PRIVATE_PROVIDER_HOSTS=true.
  */
 
-import { lookup } from 'node:dns/promises';
-import { isIP } from 'node:net';
+import { lookup as dnsLookup } from 'node:dns';
+import { BlockList, isIP, type LookupFunction } from 'node:net';
 
-function ipv4Private(ip: string): boolean {
-  const [a = 0, b = 0] = ip.split('.').map(Number);
-  return (
-    a === 0 ||
-    a === 10 ||
-    a === 127 ||
-    (a === 100 && b >= 64 && b <= 127) || // carrier-grade NAT
-    (a === 169 && b === 254) || // link-local, cloud metadata
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168) ||
-    a >= 224 // multicast, reserved, broadcast
-  );
+const blocked = new BlockList();
+
+// IPv4. BlockList also applies these to IPv4-mapped IPv6 addresses (::ffff:a.b.c.d, in either notation).
+for (const [network, prefix] of [
+  ['0.0.0.0', 8], // "this" network
+  ['10.0.0.0', 8],
+  ['100.64.0.0', 10], // carrier-grade NAT
+  ['127.0.0.0', 8], // loopback
+  ['169.254.0.0', 16], // link-local, cloud metadata
+  ['172.16.0.0', 12],
+  ['192.0.0.0', 24], // IETF protocol assignments
+  ['192.168.0.0', 16],
+  ['198.18.0.0', 15], // benchmarking
+  ['224.0.0.0', 3], // multicast, reserved, broadcast
+] as const) {
+  blocked.addSubnet(network, prefix, 'ipv4');
 }
 
-function ipv6Private(ip: string): boolean {
-  const v = ip.toLowerCase();
-  if (v === '::' || v === '::1') return true;
-  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(v);
-  if (mapped?.[1]) return ipv4Private(mapped[1]);
-  return /^f[cd]/.test(v) || /^fe[89ab]/.test(v); // unique-local fc00::/7, link-local fe80::/10
+// IPv6 ranges that are not ordinary global unicast.
+for (const [network, prefix] of [
+  ['::', 96], // unspecified, loopback and IPv4-compatible (::a.b.c.d)
+  ['64:ff9b::', 96], // NAT64: embeds an IPv4 address
+  ['64:ff9b:1::', 48], // local-use NAT64
+  ['100::', 64], // discard-only
+  ['2001::', 32], // Teredo
+  ['2002::', 16], // 6to4: embeds an IPv4 address
+  ['fc00::', 7], // unique-local
+  ['fe80::', 10], // link-local
+  ['ff00::', 8], // multicast
+] as const) {
+  blocked.addSubnet(network, prefix, 'ipv6');
 }
 
+/** True for an address that must not be contacted. Hostnames (non-IP input) are not addresses: false. */
 export function isPrivateAddress(ip: string): boolean {
   const family = isIP(ip);
-  if (family === 4) return ipv4Private(ip);
-  if (family === 6) return ipv6Private(ip);
+  if (family === 4) return blocked.check(ip, 'ipv4');
+  if (family === 6) return blocked.check(ip, 'ipv6');
   return false;
 }
 
@@ -49,23 +66,26 @@ export function isDisallowedHost(hostname: string): boolean {
   return isPrivateAddress(host);
 }
 
-export type HostLookup = (hostname: string) => Promise<Array<{ address: string }>>;
-
-const defaultLookup: HostLookup = (hostname) => lookup(hostname, { all: true });
+/** The signature `net.connect` / undici's `connect.lookup` expect, in both forms (single address, or `all: true`). */
+export type LookupFn = LookupFunction;
 
 /**
- * Throws when the URL's host is, or resolves to, a non-public address. A name that does not
- * resolve is let through: the request itself will fail, and refusing it would only hide that error.
+ * Wraps a DNS lookup so that a hostname resolving to any non-public address fails the connection.
+ * On failure the callback's address argument is an empty placeholder that Node ignores.
  */
-export async function assertPublicHost(url: string, resolve: HostLookup = defaultLookup): Promise<void> {
-  const { hostname } = new URL(url);
-  if (isDisallowedHost(hostname)) throw new Error('private host');
-  if (isIP(hostname.replace(/^\[|\]$/g, ''))) return;
-  let addresses: Array<{ address: string }>;
-  try {
-    addresses = await resolve(hostname);
-  } catch {
-    return;
-  }
-  if (addresses.some((a) => isPrivateAddress(a.address))) throw new Error('private host');
+export function createGuardedLookup(resolve: LookupFn = dnsLookup as unknown as LookupFn): LookupFn {
+  return (hostname, options, callback) => {
+    resolve(hostname, options, (err, address, family) => {
+      if (err) return callback(err, address, family);
+      const resolved = Array.isArray(address) ? address.map((a) => a.address) : [address];
+      if (resolved.some(isPrivateAddress)) {
+        const refusal: NodeJS.ErrnoException = new Error('Host resolves to a non-public address');
+        refusal.code = 'EBLOCKEDHOST';
+        return callback(refusal, '', 4);
+      }
+      callback(null, address, family);
+    });
+  };
 }
+
+export const guardedLookup: LookupFn = createGuardedLookup();
