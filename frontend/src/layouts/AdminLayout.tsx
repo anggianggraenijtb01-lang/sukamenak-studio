@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useStudio } from '../components/common/StudioContext';
+import { useAuth } from '../auth/AuthProvider';
 import { LogoIcon } from '../components/common/Logo';
 import {
   Activity,
@@ -14,10 +14,6 @@ import {
   FileCheck,
   Sliders,
   LogOut,
-  Home,
-  KeyRound,
-  ArrowRight,
-  AlertCircle,
   Mail,
   MessageCircle,
   ChevronDown,
@@ -27,11 +23,11 @@ import {
 export const AdminLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAdminLoggedIn, adminLogin, adminLogout } = useStudio();
-  const [emailInput, setEmailInput] = useState('admin@sukamenak.studio');
-  const [passwordInput, setPasswordInput] = useState('admin123');
-  const [loginError, setLoginError] = useState(false);
+  const { user, logout } = useAuth();
+  const displayName = user?.name ?? '';
+  const initial = displayName.trim().charAt(0).toUpperCase() || 'A';
   const [showAdminMenu, setShowAdminMenu] = useState(false);
+  // D3: the avatar photo is still a per-browser localStorage mock (no avatar endpoint in the API yet); decide with AdminProfile.
   const [adminAvatar, setAdminAvatar] = useState<string | null>(() =>
     localStorage.getItem('sukamenak_admin_avatar')
   );
@@ -59,122 +55,13 @@ export const AdminLayout: React.FC = () => {
     { to: '/admin/profile', label: 'Profil Admin', icon: User },
   ];
 
-  const handleAdminLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const success = adminLogin(emailInput, passwordInput);
-    if (success) {
-      setLoginError(false);
-    } else {
-      setLoginError(true);
-    }
+  const handleAdminLogout = async () => {
+    setShowAdminMenu(false);
+    await logout();
+    navigate('/login', { replace: true });
   };
 
-  const handleAdminLogout = () => {
-    adminLogout();
-    navigate('/login');
-  };
-
-  // ─────────────────────────────────────────────────────────────
-  // GERBANG LOGIN ADMIN (Bila belum terotentikasi)
-  // ─────────────────────────────────────────────────────────────
-  if (!isAdminLoggedIn) {
-    return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6 text-[#0F172A]">
-        <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 p-8 shadow-xl space-y-6">
-          <div className="text-center space-y-3">
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-[#EFF6FF] border-2 border-[#BFDBFE] flex items-center justify-center text-[#2563EB] shadow-xs">
-              <ShieldAlert className="w-8 h-8 text-[#2563EB]" />
-            </div>
-
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] text-[11px] font-black uppercase tracking-wider">
-              <span>Portal Terproteksi Admin</span>
-            </div>
-
-            <h1 className="text-2xl font-black text-[#0F172A] tracking-tight">
-              Gerbang Operasional
-            </h1>
-            <p className="text-xs text-slate-500 leading-relaxed font-normal">
-              Masukkan kredensial operator admin untuk mengakses kontrol sistem &amp; model engine Sukamenak Studio.
-            </p>
-          </div>
-
-          <form onSubmit={handleAdminLoginSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#0F172A]">
-                Email Operator / Admin
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                <input
-                  type="email"
-                  required
-                  value={emailInput}
-                  onChange={(e) => {
-                    setEmailInput(e.target.value);
-                    setLoginError(false);
-                  }}
-                  placeholder="admin@sukamenak.studio"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-[#F8FAFC] border border-slate-300 text-sm font-medium text-[#0F172A] focus:outline-none focus:border-[#2563EB] focus:bg-white transition-all"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#0F172A]">
-                Kata Sandi Admin
-              </label>
-              <div className="relative">
-                <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                <input
-                  type="password"
-                  required
-                  value={passwordInput}
-                  onChange={(e) => {
-                    setPasswordInput(e.target.value);
-                    setLoginError(false);
-                  }}
-                  placeholder="Masukkan kata sandi admin"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-[#F8FAFC] border border-slate-300 text-sm font-medium text-[#0F172A] focus:outline-none focus:border-[#2563EB] focus:bg-white transition-all"
-                />
-              </div>
-              {loginError && (
-                <div className="flex items-center gap-1.5 text-xs text-red-600 font-semibold mt-2">
-                  <AlertCircle className="w-4 h-4" />
-                  <span>Kredensial tidak valid. Gunakan <strong>admin@sukamenak.studio</strong> &amp; <strong>admin123</strong></span>
-                </div>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-3.5 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 transition-all cursor-pointer"
-            >
-              <span>Buka Gerbang Operator Admin</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </form>
-
-          <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
-            <Link
-              to="/"
-              className="font-bold text-slate-600 hover:text-[#2563EB] transition-colors flex items-center gap-1.5"
-            >
-              <Home className="w-3.5 h-3.5" />
-              <span>Kembali ke Beranda</span>
-            </Link>
-
-            <Link
-              to="/creator/dashboard"
-              className="font-bold text-[#2563EB] hover:underline"
-            >
-              Studio Kreator Warga &rarr;
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  // Access is enforced by <RequireRole role="admin"> in App.tsx: this layout only ever renders for a signed-in admin.
   // ─────────────────────────────────────────────────────────────
   // HALAMAN OPERATOR ADMIN AKTIF (STANDARDIZED MINIMALIST HEADER)
   // ─────────────────────────────────────────────────────────────
@@ -185,7 +72,7 @@ export const AdminLayout: React.FC = () => {
           1. GLOBAL TOP NAVBAR (STANDARDIZED MINIMALIST HEADER)
           - Left: Crisp 'Sukamenak Studio' wordmark with geometric Royal Blue glyph emblem.
           - Middle: Wide, clean negative space (Completely empty).
-          - Right: Circular avatar 'A' with label "Admin Operasional • admin@sukamenak.studio".
+          - Right: Circular avatar (initial) with the signed-in admin's name.
       ───────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 bg-white border-b border-[#E2E8F0] px-6 lg:px-8 h-18 flex items-center justify-between shadow-2xs">
         
@@ -207,7 +94,7 @@ export const AdminLayout: React.FC = () => {
         {/* Middle: Wide clean negative space */}
         <div className="flex-1" />
 
-        {/* Right: Circular avatar 'A' with label "Admin Operasional • admin@sukamenak.studio" */}
+        {/* Right: Circular avatar (initial) with the signed-in admin's name */}
         <div className="relative">
           <button
             type="button"
@@ -222,11 +109,11 @@ export const AdminLayout: React.FC = () => {
               />
             ) : (
               <div className="w-8 h-8 rounded-full bg-[#0F172A] text-white flex items-center justify-center text-xs font-black">
-                A
+                {initial}
               </div>
             )}
             <span className="text-xs sm:text-sm font-bold text-[#0F172A] group-hover:text-[#2563EB] transition-colors">
-              Admin Operasional
+              {displayName}
             </span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#2563EB] transition-colors" />
           </button>
@@ -234,8 +121,8 @@ export const AdminLayout: React.FC = () => {
           {showAdminMenu && (
             <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl border border-slate-200 shadow-2xl p-2 z-50">
               <div className="px-3 py-2 border-b border-slate-100 mb-1">
-                <div className="text-xs font-black text-[#0F172A]">Admin Operasional</div>
-                <div className="text-[11px] text-[#64748B]">Operator Sistem Terverifikasi</div>
+                <div className="text-xs font-black text-[#0F172A]">{displayName}</div>
+                <div className="text-[11px] text-[#64748B] truncate">{user?.email}</div>
               </div>
               <Link
                 to="/admin/profile"

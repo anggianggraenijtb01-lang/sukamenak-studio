@@ -1,3 +1,4 @@
+// D2: still mock data / local state. Replace with the real API in src/api/creator.ts (see queryKeys.ts for cache keys).
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Phone, MapPin, CheckCircle2, Save, Mail, Store, Camera, Trash2, LogOut } from 'lucide-react';

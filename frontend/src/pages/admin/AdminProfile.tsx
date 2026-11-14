@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useStudio } from '../../components/common/StudioContext';
+import { useAuth } from '../../auth/AuthProvider';
 import {
   User,
   Mail,
@@ -18,11 +18,12 @@ import {
 
 export const AdminProfile: React.FC = () => {
   const navigate = useNavigate();
-  const { adminLogout } = useStudio();
-  const [adminName, setAdminName] = useState('Admin Operasional');
-  const [adminEmail, setAdminEmail] = useState('admin@sukamenak.org');
+  const { user, logout } = useAuth();
+  // D3: this page is still a mock form (nothing is saved). Wire name/password to PATCH /me (updateMe in src/api/creator.ts).
+  const [adminName, setAdminName] = useState(user?.name ?? '');
+  const [adminEmail, setAdminEmail] = useState(user?.email ?? '');
   const [adminPhone, setAdminPhone] = useState('+62 812-3456-7890');
-  const [currentPassword, setCurrentPassword] = useState('admin123');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [adminAvatar, setAdminAvatar] = useState<string | null>(() =>
@@ -56,9 +57,9 @@ export const AdminProfile: React.FC = () => {
     setTimeout(() => setSavedSuccess(false), 3000);
   };
 
-  const handleLogout = () => {
-    adminLogout();
-    navigate('/login');
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true });
   };
 
   return (
@@ -244,7 +245,7 @@ export const AdminProfile: React.FC = () => {
                     type="password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="admin123"
+                    placeholder="Kata sandi saat ini"
                     className="w-full px-4 py-2.5 rounded-full bg-[#F8FAFC] border border-[#CBD5E1] text-xs sm:text-sm text-[#0F172A] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-[#2563EB] transition-all"
                   />
                 </div>

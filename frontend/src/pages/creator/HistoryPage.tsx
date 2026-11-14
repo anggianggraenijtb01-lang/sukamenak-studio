@@ -1,3 +1,4 @@
+// D2: still mock data / local state. Replace with the real API in src/api/creator.ts (see queryKeys.ts for cache keys).
 import React, { useState } from 'react';
 import { Download, Link2, Check, Clock, Zap } from 'lucide-react';
 

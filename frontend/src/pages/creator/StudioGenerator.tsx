@@ -12,14 +12,37 @@ import {
   CheckCircle2,
   Share2,
 } from 'lucide-react';
-import { useStudio } from '../../components/common/StudioContext';
-import { handleStudioGenerateRequest } from '../../controllers/generationController';
+import { useQuery } from '@tanstack/react-query';
+import { useMe } from '../../auth/AuthProvider';
+import { createGeneration, getTemplate, listTemplates, uploadReference } from '../../api/creator';
+import { ERROR_MESSAGES, generationErrorMessage, getErrorMessage } from '../../api/errors';
+import { queryKeys } from '../../api/queryKeys';
+import { fileUrl } from '../../api/client';
+import { useGenerationPolling } from '../../api/useGenerationPolling';
+import type { GenerationMode, TemplateDetail, TemplateListItem } from '../../api/types';
+
+// D2: minimal real wiring (template picked automatically, title/price mapped onto its first text slots, prompt text
+// sent as `remarks`). D2 replaces this with a proper template picker and slot form built from GET /templates/:slug.
+const STEP_BY_PROGRESS = { analysis: 1, compose: 2, generate: 3, composite: 3, done: 4 } as const;
+
+function pickTemplate(list: TemplateListItem[] | undefined, mode: GenerationMode): TemplateListItem | undefined {
+  const usable = (list ?? []).filter((t) => t.subject === 'product' && (t.mode === mode || t.mode === 'both'));
+  return usable.find((t) => t.category === 'poster') ?? usable[0];
+}
+
+function buildSlotValues(detail: TemplateDetail, title: string, priceTag: string): Record<string, string> {
+  const clip = (value: string, max: number | null) => (max ? value.slice(0, max) : value);
+  const values: Record<string, string> = {};
+  const overlayText = detail.slots.filter((s) => s.target === 'overlay' && (s.type === 'text' || s.type === 'textarea'));
+  if (overlayText[0] && title.trim()) values[overlayText[0].key] = clip(title.trim(), overlayText[0].max_length);
+  if (overlayText[1] && priceTag.trim()) values[overlayText[1].key] = clip(priceTag.trim(), overlayText[1].max_length);
+  const product = detail.slots.find((s) => s.target === 'image' && s.key === 'product');
+  if (product && title.trim()) values[product.key] = clip(title.trim(), product.max_length);
+  return values;
+}
 
 export const StudioGenerator: React.FC = () => {
-  const {
-    quotaRemaining,
-    consumeQuota,
-  } = useStudio();
+  const { data: me } = useMe();
 
     type AspectRatio = '4:5' | '1:1' | '9:16' | '16:9';
 
@@ -44,10 +67,42 @@ export const StudioGenerator: React.FC = () => {
     return 'Full-shot close-up foto produk keripik tempe renyah di atas piring kayu saji dengan taburan daun jeruk segar, pencahayaan alami studio hangat.';
   });
   const [priceTag, setPriceTag] = useState('Rp 15.000');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [activeStep, setActiveStep] = useState<number>(4); // 1: Analisis, 2: Komposisi, 3: Render, 4: Selesai
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [generationId, setGenerationId] = useState<string | null>(null);
+  const [resultUrl, setResultUrl] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [posterImage, setPosterImage] = useState<string>('/posters/poster-keripik.jpg');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const mode: GenerationMode = generatorMode === 'photo' ? 'i2i' : 't2i';
+  const templatesQuery = useQuery({
+    queryKey: queryKeys.templates.list({ subject: 'product' }),
+    queryFn: ({ signal }) => listTemplates({ subject: 'product' }, signal),
+  });
+  const chosen = pickTemplate(templatesQuery.data, mode);
+  const templateQuery = useQuery({
+    queryKey: queryKeys.templates.detail(chosen?.slug ?? ''),
+    queryFn: ({ signal }) => getTemplate(chosen!.slug, signal),
+    enabled: !!chosen,
+  });
+
+  // Polls GET /generations/:id every 2 s until done or failed; stops on unmount.
+  const polling = useGenerationPolling(generationId, {
+    onFinished: (g) => {
+      if (g.status === 'done' && g.result_url) setResultUrl(fileUrl(g.result_url));
+      else setErrorMsg(generationErrorMessage(g.error_code));
+    },
+  });
+  const isGenerating = isSubmitting || (!!generationId && !polling.isFinished && polling.isPolling);
+  // 1: Analisis, 2: Komposisi, 3: Render, 4: Selesai
+  const activeStep: number = generationId
+    ? polling.isDone
+      ? 4
+      : polling.generation?.progress_step
+        ? STEP_BY_PROGRESS[polling.generation.progress_step]
+        : 1
+    : 4;
 
   // Compactness calculation
   const compactnessScore = Math.min(
@@ -58,6 +113,7 @@ export const StudioGenerator: React.FC = () => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setSelectedFile(file);
       const reader = new FileReader();
       reader.onload = () => {
         if (typeof reader.result === 'string') {
@@ -70,36 +126,48 @@ export const StudioGenerator: React.FC = () => {
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (quotaRemaining <= 0) {
-      alert('Kuota harian Anda habis. Silakan reset kuota demo di header.');
+    if (isGenerating) return;
+    setErrorMsg(null);
+
+    if (me && me.usage.remaining_today <= 0) {
+      setErrorMsg(ERROR_MESSAGES.DAILY_LIMIT_REACHED);
+      return;
+    }
+    if (!title.trim()) {
+      setErrorMsg('Judul konten wajib diisi sebelum membuat poster.');
+      return;
+    }
+    if (mode === 'i2i' && !selectedFile) {
+      setErrorMsg('Unggah foto produk terlebih dahulu, atau pilih metode Teks ke Gambar.');
+      return;
+    }
+    if (!chosen || !templateQuery.data) {
+      setErrorMsg('Template belum siap. Tunggu sebentar lalu coba lagi.');
       return;
     }
 
-    setIsGenerating(true);
-    setActiveStep(1);
-
-    setTimeout(() => {
-      setActiveStep(2);
-    }, 700);
-
-    setTimeout(() => {
-      setActiveStep(3);
-    }, 1500);
-
-    setTimeout(() => {
-      setActiveStep(4);
-      setIsGenerating(false);
-      consumeQuota();
-    }, 2400);
-  };
-
-  const handleDownloadHD = () => {
-    const link = document.createElement('a');
-    link.href = posterImage;
-    link.download = `poster-${title.toLowerCase().replace(/\s+/g, '-')}-hd.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    setIsSubmitting(true);
+    setResultUrl(null);
+    setGenerationId(null);
+    try {
+      let referenceIds: string[] = [];
+      if (mode === 'i2i' && selectedFile) {
+        const ref = await uploadReference({ file: selectedFile, role: 'product', label: title.trim().slice(0, 80) });
+        referenceIds = [ref.id];
+      }
+      const created = await createGeneration({
+        template_slug: chosen.slug,
+        mode,
+        slot_values: buildSlotValues(templateQuery.data, title, priceTag),
+        remarks: promptText.slice(0, 1000),
+        reference_ids: referenceIds,
+      });
+      setGenerationId(created.id);
+    } catch (err) {
+      setErrorMsg(getErrorMessage(err));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleWhatsAppShare = () => {
@@ -281,6 +349,12 @@ export const StudioGenerator: React.FC = () => {
               </div>
             </div>
 
+            {errorMsg && (
+              <div role="alert" className="p-3 rounded-xl bg-orange-50 border border-orange-200 text-xs text-[#EA580C] font-semibold">
+                {errorMsg}
+              </div>
+            )}
+
             {/* Solid Royal Blue CTA 'Buat Poster Instan' */}
             <button
               type="submit"
@@ -314,33 +388,38 @@ export const StudioGenerator: React.FC = () => {
           {/* 4:5 Poster Preview Canvas with Realistic Render Card */}
           <div className="relative aspect-[4/5] rounded-2xl overflow-hidden border border-slate-200 shadow-md bg-slate-900 group">
             <img
-              src={posterImage}
+              src={resultUrl ?? posterImage}
               alt={title}
               className={`w-full h-full object-cover transition-all duration-700 ${
                 isGenerating ? 'scale-105 filter blur-xs' : 'scale-100'
               }`}
             />
 
-            {/* Top Badge Overlay */}
-            <div className="absolute top-3 left-3 flex items-center gap-2">
-              <span className="px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-wider border border-white/20">
-                KULINER UMKM
-              </span>
-            </div>
+            {/* Sample overlay: only before a real result exists (the server-rendered result already carries its text) */}
+            {!resultUrl && (
+              <>
+                {/* Top Badge Overlay */}
+                <div className="absolute top-3 left-3 flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-wider border border-white/20">
+                    KULINER UMKM
+                  </span>
+                </div>
 
-            {/* Bottom Title & Price Overlay */}
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-5 text-white">
-              <span className="inline-block px-2 py-0.5 rounded bg-[#2563EB] text-[10px] font-black uppercase mb-1">
-                Katalog Siap Cetak
-              </span>
-              <h4 className="font-black text-lg leading-tight drop-shadow-sm">
-                {title}
-              </h4>
-              <p className="text-xs text-blue-200 mt-1 font-semibold flex items-center justify-between">
-                <span>{priceTag}</span>
-                <span className="text-[11px] text-white/80 font-normal">Sukamenak Studio</span>
-              </p>
-            </div>
+                {/* Bottom Title & Price Overlay */}
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-5 text-white">
+                  <span className="inline-block px-2 py-0.5 rounded bg-[#2563EB] text-[10px] font-black uppercase mb-1">
+                    Katalog Siap Cetak
+                  </span>
+                  <h4 className="font-black text-lg leading-tight drop-shadow-sm">
+                    {title}
+                  </h4>
+                  <p className="text-xs text-blue-200 mt-1 font-semibold flex items-center justify-between">
+                    <span>{priceTag}</span>
+                    <span className="text-[11px] text-white/80 font-normal">Sukamenak Studio</span>
+                  </p>
+                </div>
+              </>
+            )}
 
             {/* Generation Spinner Overlay */}
             {isGenerating && (
@@ -412,14 +491,23 @@ export const StudioGenerator: React.FC = () => {
 
           {/* Single Direct Action Button: Unduh HD */}
           <div className="pt-1">
-            <button
-              type="button"
-              onClick={handleDownloadHD}
-              className="w-full py-3.5 px-6 rounded-2xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md shadow-blue-500/25 active:scale-98"
+            {/* The signed result URL works as a plain link; it expires, so it is never stored. */}
+            <a
+              href={resultUrl ?? undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              download={`poster-${title.toLowerCase().replace(/\s+/g, '-')}-hd.png`}
+              aria-disabled={!resultUrl}
+              onClick={(e) => {
+                if (!resultUrl) e.preventDefault();
+              }}
+              className={`w-full py-3.5 px-6 rounded-2xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-blue-500/25 active:scale-98 ${
+                resultUrl ? 'cursor-pointer' : 'opacity-60 pointer-events-none'
+              }`}
             >
               <Download className="w-4 h-4" />
               <span>Unduh Gambar HD ({selectedRatio.resolution})</span>
-            </button>
+            </a>
           </div>
 
         </div>

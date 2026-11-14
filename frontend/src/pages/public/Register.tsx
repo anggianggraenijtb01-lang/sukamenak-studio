@@ -1,17 +1,53 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Lock, Mail, User, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Link, Navigate } from 'react-router-dom';
+import { Lock, Mail, User, ArrowRight, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useAuth, homePathForRole } from '../../auth/AuthProvider';
+import { getErrorMessage, isApiError } from '../../api/errors';
 
 export const Register: React.FC = () => {
-  const navigate = useNavigate();
+  const { user, status, register } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleRegister = (e: React.FormEvent) => {
+  // Signed in (including right after registering): go to the role's home.
+  if (status === 'authenticated' && user) {
+    return <Navigate to={homePathForRole(user.role)} replace />;
+  }
+
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/creator/studio');
+    if (submitting) return;
+    setErrorMsg('');
+
+    const local: Record<string, string> = {};
+    if (!fullName.trim()) local.name = 'Wajib diisi';
+    if (!email.trim()) local.email = 'Wajib diisi';
+    if (!password) local.password = 'Wajib diisi';
+    setFieldErrors(local);
+    if (Object.keys(local).length > 0) return;
+
+    setSubmitting(true);
+    try {
+      // Only name, email and password are sent. The server always creates a creator account.
+      await register({ name: fullName.trim(), email: email.trim(), password });
+    } catch (err) {
+      if (isApiError(err)) {
+        const fields = { ...err.fieldErrors };
+        // An already registered email belongs under the email field.
+        if (err.code === 'EMAIL_EXISTS') fields.email = err.message;
+        setFieldErrors(fields);
+        // Field-level problems are shown next to the fields; anything else goes in the banner.
+        setErrorMsg(Object.keys(fields).length > 0 ? '' : err.message);
+      } else {
+        setErrorMsg(getErrorMessage(err));
+      }
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -88,7 +124,7 @@ export const Register: React.FC = () => {
           </div>
 
           {/* Form Utama */}
-          <form onSubmit={handleRegister} className="space-y-3.5">
+          <form onSubmit={handleRegister} noValidate className="space-y-3.5">
             
             {/* Field 1: Nama Lengkap */}
             <div>
@@ -102,12 +138,14 @@ export const Register: React.FC = () => {
                 <input
                   type="text"
                   required
+                  autoComplete="name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Nama Anda"
                   className="w-full pl-10 pr-4 py-2 sm:py-2.5 rounded-full bg-[#F8FAFC] border border-[#CBD5E1] text-xs sm:text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E40AF] focus:border-[#1E40AF] transition-all"
                 />
               </div>
+              {fieldErrors.name && <p className="mt-1 text-[11px] font-semibold text-[#EA580C]">{fieldErrors.name}</p>}
             </div>
 
             {/* Field 2: Alamat Email */}
@@ -122,12 +160,14 @@ export const Register: React.FC = () => {
                 <input
                   type="email"
                   required
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="nama@email.com"
                   className="w-full pl-10 pr-4 py-2 sm:py-2.5 rounded-full bg-[#F8FAFC] border border-[#CBD5E1] text-xs sm:text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E40AF] focus:border-[#1E40AF] transition-all"
                 />
               </div>
+              {fieldErrors.email && <p className="mt-1 text-[11px] font-semibold text-[#EA580C]">{fieldErrors.email}</p>}
             </div>
 
             {/* Field 4: Kata Sandi */}
@@ -142,9 +182,10 @@ export const Register: React.FC = () => {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Minimal 6 karakter"
+                  placeholder="Minimal 8 karakter"
                   className="w-full pl-10 pr-10 py-2 sm:py-2.5 rounded-full bg-[#F8FAFC] border border-[#CBD5E1] text-xs sm:text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E40AF] focus:border-[#1E40AF] transition-all"
                 />
                 <button
@@ -156,15 +197,23 @@ export const Register: React.FC = () => {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {fieldErrors.password && <p className="mt-1 text-[11px] font-semibold text-[#EA580C]">{fieldErrors.password}</p>}
             </div>
+
+            {errorMsg && (
+              <div role="alert" className="p-3 rounded-xl bg-orange-50 border border-orange-200 text-xs text-[#EA580C] font-semibold">
+                {errorMsg}
+              </div>
+            )}
 
             {/* Tombol Aksi Utama: Daftar Sekarang → */}
             <button
               type="submit"
-              className="w-full py-3 sm:py-3.5 rounded-full bg-[#1E40AF] hover:bg-[#1D4ED8] text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-700/25 transition-all hover:shadow-xl hover:shadow-blue-700/35 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer mt-1"
+              disabled={submitting}
+              className="w-full py-3 sm:py-3.5 rounded-full bg-[#1E40AF] hover:bg-[#1D4ED8] text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-700/25 transition-all hover:shadow-xl hover:shadow-blue-700/35 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer mt-1 disabled:opacity-70 disabled:pointer-events-none"
             >
-              <span>Daftar Sekarang</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>{submitting ? 'Memproses...' : 'Daftar Sekarang'}</span>
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
             </button>
           </form>
 

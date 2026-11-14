@@ -2,8 +2,10 @@ import React from 'react';
 import { Link, Outlet } from 'react-router-dom';
 import { MessageCircle, Mail, Instagram } from 'lucide-react';
 import { LogoIcon } from '../components/common/Logo';
+import { homePathForRole, useAuth } from '../auth/AuthProvider';
 
 export const PublicLayout: React.FC = () => {
+  const { user, status } = useAuth();
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     if (window.location.pathname === '/') {
       e.preventDefault();
@@ -71,12 +73,21 @@ export const PublicLayout: React.FC = () => {
 
           {/* Di ujung kanan: Tombol Masuk (#2563EB) */}
           <div className="flex items-center gap-3">
-            <Link
-              to="/login"
-              className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-[#2563EB] hover:bg-[#1D4ED8] shadow-sm transition-all"
-            >
-              Masuk
-            </Link>
+            {status === 'authenticated' && user ? (
+              <Link
+                to={homePathForRole(user.role)}
+                className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-[#2563EB] hover:bg-[#1D4ED8] shadow-sm transition-all"
+              >
+                Buka Studio
+              </Link>
+            ) : (
+              <Link
+                to="/login"
+                className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-[#2563EB] hover:bg-[#1D4ED8] shadow-sm transition-all"
+              >
+                Masuk
+              </Link>
+            )}
           </div>
         </div>
       </header>

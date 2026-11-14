@@ -1,42 +1,76 @@
 import React, { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Lock, Terminal, Play, ShieldCheck, KeyRound, EyeOff } from 'lucide-react';
-import {
-  getDefaultWriteOnlySkeleton,
-  renderTestCorePromptPreview,
-} from '../../services/aesEncryption';
-import { updateEncryptedCorePrompt } from '../../controllers/adminController';
-import { useStudio } from '../../components/common/StudioContext';
+import { adminActivateCorePrompt, adminCreateCorePrompt, adminTestRenderCorePrompt } from '../../api/admin';
+import { getErrorMessage } from '../../api/errors';
+import { queryKeys } from '../../api/queryKeys';
+import type {
+  CorePromptMeta,
+  CorePromptTestRenderResponse,
+  TemplateCategory,
+  TemplateSubject,
+} from '../../api/types';
+
+// D3: minimal write-only wiring so the page compiles against the real API. The core prompt body is typed here, sent
+// once to POST /admin/core-prompts and then dropped from state: no endpoint ever returns it. D3 builds the real UI
+// (version list per key, activate, template selector for test-render) on src/api/admin.ts.
+const BLANK_TOKEN = '[___]';
 
 export const CorePromptManager: React.FC = () => {
-  const { lastEncryptedRecord, setLastEncryptedRecord } = useStudio();
-  const [editorContent, setEditorContent] = useState<string>(getDefaultWriteOnlySkeleton());
+  const queryClient = useQueryClient();
+  const [editorContent, setEditorContent] = useState<string>('');
+  const [promptKey, setPromptKey] = useState('product.poster');
+  const [subject, setSubject] = useState<TemplateSubject>('product');
+  const [publication, setPublication] = useState<TemplateCategory>('poster');
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
+  const [created, setCreated] = useState<CorePromptMeta | null>(null);
 
-  const [testTitle, setTestTitle] = useState('Keripik Tempe Bu Cantika');
-  const [testSubject, setTestSubject] = useState('Produk UMKM');
-  const [testVision, setTestVision] = useState('Soft Studio Key Light 45°, Slate Surface');
-  const [testZone, setTestZone] = useState('Top Header + Bottom CTA');
+  const [testRemarks, setTestRemarks] = useState('');
+  const [testResult, setTestResult] = useState<CorePromptTestRenderResponse | null>(null);
 
-  const previewResult = renderTestCorePromptPreview({
-    title: testTitle,
-    subjectType: testSubject,
-    visionSummary: testVision,
-    textZone: testZone,
+  const placeholderCount = editorContent.split(BLANK_TOKEN).length - 1;
+
+  const createMutation = useMutation({
+    mutationFn: () => adminCreateCorePrompt({ key: promptKey.trim(), subject, publication, body: editorContent }),
+    onSuccess: (meta) => {
+      setCreated(meta);
+      setEditorContent(''); // write-only: the plaintext leaves the view as soon as it is sent
+      setStatusBanner(
+        `Versi ${meta.version} dari "${meta.key}" tersimpan terenkripsi di server (${meta.blank_count} isian). Versi ini belum aktif.`
+      );
+      void queryClient.invalidateQueries({ queryKey: queryKeys.admin.corePrompts.all });
+    },
+    onError: (err) => setStatusBanner(getErrorMessage(err)),
   });
 
-  const handleSaveEncrypted = async (e: React.FormEvent) => {
+  const activateMutation = useMutation({
+    mutationFn: (id: string) => adminActivateCorePrompt(id),
+    onSuccess: (meta) => {
+      setCreated(meta);
+      setStatusBanner(`Versi ${meta.version} dari "${meta.key}" sekarang aktif.`);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.admin.corePrompts.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.admin.templates.all });
+    },
+    onError: (err) => setStatusBanner(getErrorMessage(err)),
+  });
+
+  const testMutation = useMutation({
+    mutationFn: () => adminTestRenderCorePrompt({ key: promptKey.trim(), remarks: testRemarks || undefined }),
+    onSuccess: (res) => setTestResult(res),
+    onError: (err) => {
+      setTestResult(null);
+      setStatusBanner(getErrorMessage(err));
+    },
+  });
+
+  const handleSaveEncrypted = (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const record = await updateEncryptedCorePrompt(editorContent);
-      setLastEncryptedRecord(record);
-      setStatusBanner(
-        `Master Prompt berhasil dienkripsi ulang dengan AES-256-GCM pada ${new Date(
-          record.updatedAt
-        ).toLocaleTimeString('id-ID')}. Plaintext dihapus dari view (Write-Only Mode).`
-      );
-    } catch (err) {
-      setStatusBanner(err instanceof Error ? err.message : 'Gagal mengenkripsi prompt.');
+    setStatusBanner(null);
+    if (!editorContent.includes(BLANK_TOKEN)) {
+      setStatusBanner('Master prompt wajib memiliki minimal satu placeholder [___] untuk injeksi slot.');
+      return;
     }
+    createMutation.mutate();
   };
 
   return (
@@ -83,34 +117,81 @@ export const CorePromptManager: React.FC = () => {
               master_prompt_vault.aes256 (Write-Only)
             </span>
             <span className="text-[11px] font-mono text-[#0284C7] font-bold">
-              Placeholder: {previewResult.placeholderCount}x [___]
+              Placeholder: {placeholderCount}x [___]
             </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <input
+              type="text"
+              value={promptKey}
+              onChange={(e) => setPromptKey(e.target.value)}
+              aria-label="Key core prompt"
+              placeholder="product.poster"
+              className="w-full px-3 py-1.5 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] text-[#0F172A] font-mono text-xs"
+            />
+            <select
+              value={subject}
+              onChange={(e) => setSubject(e.target.value as TemplateSubject)}
+              aria-label="Subjek"
+              className="w-full px-3 py-1.5 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] text-[#0F172A] font-mono text-xs"
+            >
+              <option value="product">product</option>
+              <option value="human_model">human_model</option>
+            </select>
+            <select
+              value={publication}
+              onChange={(e) => setPublication(e.target.value as TemplateCategory)}
+              aria-label="Publikasi"
+              className="w-full px-3 py-1.5 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] text-[#0F172A] font-mono text-xs"
+            >
+              <option value="poster">poster</option>
+              <option value="psa">psa</option>
+              <option value="social_post">social_post</option>
+              <option value="product_shot">product_shot</option>
+              <option value="human_model">human_model</option>
+            </select>
           </div>
 
           <textarea
             rows={8}
             value={editorContent}
             onChange={(e) => setEditorContent(e.target.value)}
+            placeholder="Tulis core prompt versi baru. Gunakan [___] untuk setiap isian slot. Isi tidak pernah ditampilkan kembali."
+            autoComplete="off"
+            spellCheck={false}
             className="w-full p-3.5 rounded-xl bg-[#F8FAFC] border border-[#0F172A] font-mono text-xs text-[#0F172A] leading-relaxed focus:bg-white focus:outline-none focus:border-[#0284C7]"
           />
 
-          <div className="p-3 rounded-xl bg-[#F8FAFC] border border-[#CBD5E1] font-mono text-[11px] text-[#475569] space-y-1">
-            <div className="flex items-center justify-between text-[#1E40AF] font-bold">
-              <span className="inline-flex items-center gap-1">
-                <KeyRound className="w-3.5 h-3.5" />
-                Ciphertext Vault ({lastEncryptedRecord.algorithm}):
-              </span>
-              <span>IV: {lastEncryptedRecord.ivHex}</span>
+          {created && (
+            <div className="p-3 rounded-xl bg-[#F8FAFC] border border-[#CBD5E1] font-mono text-[11px] text-[#475569] space-y-1">
+              <div className="flex items-center justify-between text-[#1E40AF] font-bold">
+                <span className="inline-flex items-center gap-1">
+                  <KeyRound className="w-3.5 h-3.5" />
+                  Versi terakhir ({created.key} v{created.version}):
+                </span>
+                <span>{created.is_active ? 'AKTIF' : 'BELUM AKTIF'}</span>
+              </div>
+              {!created.is_active && (
+                <button
+                  type="button"
+                  disabled={activateMutation.isPending}
+                  onClick={() => activateMutation.mutate(created.id)}
+                  className="text-[#EA580C] font-bold hover:underline cursor-pointer disabled:opacity-60"
+                >
+                  Aktifkan versi ini
+                </button>
+              )}
             </div>
-            <div className="truncate text-[#0F172A]">{lastEncryptedRecord.cipherTextHex}</div>
-          </div>
+          )}
 
           <button
             type="submit"
-            className="w-full py-2.5 rounded-xl bg-[#EA580C] hover:bg-[#C2410C] text-white font-extrabold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            disabled={createMutation.isPending}
+            className="w-full py-2.5 rounded-xl bg-[#EA580C] hover:bg-[#C2410C] text-white font-extrabold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-60"
           >
             <Lock className="w-3.5 h-3.5" />
-            Enkripsi &amp; Overwrite Master Prompt (AES-256-GCM)
+            {createMutation.isPending ? 'Mengirim...' : 'Kirim Versi Baru Master Prompt (Terenkripsi di Server)'}
           </button>
         </form>
 
@@ -128,61 +209,36 @@ export const CorePromptManager: React.FC = () => {
           <div className="space-y-2.5 text-xs">
             <div>
               <label className="block text-[11px] font-bold text-[#475569] mb-1">
-                Slot [1] Judul Uji:
+                Catatan uji (remarks):
               </label>
               <input
                 type="text"
-                value={testTitle}
-                onChange={(e) => setTestTitle(e.target.value)}
+                value={testRemarks}
+                onChange={(e) => setTestRemarks(e.target.value)}
                 className="w-full px-3 py-1.5 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] text-[#0F172A] font-mono text-xs"
               />
             </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[11px] font-bold text-[#475569] mb-1">
-                  Slot [2] Subjek:
-                </label>
-                <input
-                  type="text"
-                  value={testSubject}
-                  onChange={(e) => setTestSubject(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] text-[#0F172A] font-mono text-xs"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-[#475569] mb-1">
-                  Slot [4] Text Zone:
-                </label>
-                <input
-                  type="text"
-                  value={testZone}
-                  onChange={(e) => setTestZone(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] text-[#0F172A] font-mono text-xs"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold text-[#475569] mb-1">
-                Slot [3] Profil Vision:
-              </label>
-              <input
-                type="text"
-                value={testVision}
-                onChange={(e) => setTestVision(e.target.value)}
-                className="w-full px-3 py-1.5 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] text-[#0F172A] font-mono text-xs"
-              />
-            </div>
+            <button
+              type="button"
+              disabled={testMutation.isPending || !promptKey.trim()}
+              onClick={() => testMutation.mutate()}
+              className="w-full py-2 rounded-xl bg-[#0F172A] hover:bg-[#1E293B] text-white font-extrabold text-xs transition-colors cursor-pointer disabled:opacity-60"
+            >
+              {testMutation.isPending ? 'Menguji...' : `Uji Render "${promptKey.trim() || '...'}"`}
+            </button>
           </div>
 
           <div className="p-3.5 rounded-xl bg-[#F0F9FF] border border-[#0284C7] font-mono text-xs text-[#0F172A] space-y-1.5">
             <div className="flex items-center justify-between text-[10px] text-[#0369A1] font-bold">
               <span>OUTPUT COMPILER (MASKED):</span>
-              <span>{previewResult.encryptedStatus}</span>
+              <span>
+                {testResult
+                  ? `v${testResult.core_prompt.version} - ${testResult.filled_count} terisi / ${testResult.empty_count} kosong`
+                  : 'BELUM DIUJI'}
+              </span>
             </div>
             <pre className="whitespace-pre-wrap text-[11px] leading-relaxed">
-              {previewResult.maskedView}
+              {testResult ? testResult.masked_prompt : '[HIDDEN_CORE_PROMPT]'}
             </pre>
           </div>
         </div>

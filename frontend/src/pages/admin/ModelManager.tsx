@@ -1,3 +1,4 @@
+// D3: still mock data / local state. Replace with the real API in src/api/admin.ts (see queryKeys.ts for cache keys).
 import React, { useState } from 'react';
 import {
   Cpu,
