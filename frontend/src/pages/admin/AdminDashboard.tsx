@@ -1,3 +1,4 @@
+// D3: still mock data / local state. Replace with the real API in src/api/admin.ts (see queryKeys.ts for cache keys).
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useStudio } from '../../components/common/StudioContext';

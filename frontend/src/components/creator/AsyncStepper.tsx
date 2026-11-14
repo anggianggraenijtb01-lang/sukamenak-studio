@@ -1,6 +1,7 @@
 import React from 'react';
 import { CheckCircle2, Loader2, Circle, Eye, Lock, Wand2, Type } from 'lucide-react';
-import { StepperStageId } from '../../workers/bullmqQueue';
+
+export type StepperStageId = 1 | 2 | 3 | 4;
 
 export interface StepState {
   id: StepperStageId;
