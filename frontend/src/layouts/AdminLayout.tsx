@@ -18,6 +18,7 @@ import {
   MessageCircle,
   ChevronDown,
   User,
+  ScrollText,
 } from 'lucide-react';
 
 export const AdminLayout: React.FC = () => {
@@ -27,19 +28,6 @@ export const AdminLayout: React.FC = () => {
   const displayName = user?.name ?? '';
   const initial = displayName.trim().charAt(0).toUpperCase() || 'A';
   const [showAdminMenu, setShowAdminMenu] = useState(false);
-  // D3: the avatar photo is still a per-browser localStorage mock (no avatar endpoint in the API yet); decide with AdminProfile.
-  const [adminAvatar, setAdminAvatar] = useState<string | null>(() =>
-    localStorage.getItem('sukamenak_admin_avatar')
-  );
-
-  React.useEffect(() => {
-    const handleAvatarUpdate = () => {
-      setAdminAvatar(localStorage.getItem('sukamenak_admin_avatar'));
-    };
-    window.addEventListener('adminAvatarUpdated', handleAvatarUpdate);
-    return () => window.removeEventListener('adminAvatarUpdated', handleAvatarUpdate);
-  }, []);
-
   // Standard Admin Navigation Menus (Consistent rows)
   const adminMenus = [
     { to: '/admin/dashboard', label: 'Dashboard Analitik', icon: Activity },
@@ -50,6 +38,7 @@ export const AdminLayout: React.FC = () => {
     { to: '/admin/references', label: 'Library Referensi', icon: FolderArchive },
     { to: '/admin/curation', label: 'Kurasi Galeri', icon: Award },
     { to: '/admin/logs', label: 'Log & Trace Generasi', icon: Terminal },
+    { to: '/admin/audit', label: 'Audit Log Admin', icon: ScrollText },
     { to: '/admin/policy', label: 'Content Policy', icon: FileCheck },
     { to: '/admin/settings', label: 'Pengaturan Global', icon: Sliders },
     { to: '/admin/profile', label: 'Profil Admin', icon: User },
@@ -99,19 +88,13 @@ export const AdminLayout: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowAdminMenu(!showAdminMenu)}
+            aria-haspopup="menu"
+            aria-expanded={showAdminMenu}
             className="flex items-center gap-2.5 pl-2 pr-3.5 py-1.5 rounded-full bg-white border border-[#CBD5E1] hover:border-[#2563EB] shadow-xs hover:shadow-md transition-all cursor-pointer group"
           >
-            {adminAvatar ? (
-              <img
-                src={adminAvatar}
-                alt="Foto Admin"
-                className="w-8 h-8 rounded-full object-cover border border-[#CBD5E1]"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-[#0F172A] text-white flex items-center justify-center text-xs font-black">
-                {initial}
-              </div>
-            )}
+            <div className="w-8 h-8 rounded-full bg-[#0F172A] text-white flex items-center justify-center text-xs font-black" aria-hidden="true">
+              {initial}
+            </div>
             <span className="text-xs sm:text-sm font-bold text-[#0F172A] group-hover:text-[#2563EB] transition-colors">
               {displayName}
             </span>

@@ -11,6 +11,8 @@ import { AdminLayout } from './layouts/AdminLayout';
 import { LandingPage } from './pages/public/LandingPage';
 import { Login } from './pages/public/Login';
 import { Register } from './pages/public/Register';
+import { PrivacyPolicy } from './pages/public/PrivacyPolicy';
+import { TermsOfService } from './pages/public/TermsOfService';
 import { Dashboard as CreatorDashboard } from './pages/creator/Dashboard';
 import { StudioGenerator } from './pages/creator/StudioGenerator';
 import { Gallery } from './pages/creator/Gallery';
@@ -26,6 +28,7 @@ import { AdminTemplates } from './pages/admin/AdminTemplates';
 import { AdminReferences } from './pages/admin/AdminReferences';
 import { AdminCuration } from './pages/admin/AdminCuration';
 import { AdminLogs } from './pages/admin/AdminLogs';
+import { AdminAudit } from './pages/admin/AdminAudit';
 import { AdminPolicy } from './pages/admin/AdminPolicy';
 import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminProfile } from './pages/admin/AdminProfile';
@@ -42,6 +45,8 @@ export const App: React.FC = () => {
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/privasi" element={<PrivacyPolicy />} />
+                <Route path="/syarat" element={<TermsOfService />} />
               </Route>
 
               {/* 2. LAYOUT 2 - HALAMAN CREATOR / USER (#F8FAFC): semua pengguna yang sudah masuk (admin juga boleh) */}
@@ -56,6 +61,7 @@ export const App: React.FC = () => {
                   <Route path="profile" element={<ProfilePage />} />
                   <Route path="advisor" element={<Advisor />} />
                   <Route path="tutorials" element={<Tutorials />} />
+                  <Route path="tutorials/:slug" element={<Tutorials />} />
                   <Route path="education" element={<Navigate to="/creator/tutorials" replace />} />
                 </Route>
               </Route>
@@ -72,6 +78,7 @@ export const App: React.FC = () => {
                   <Route path="references" element={<AdminReferences />} />
                   <Route path="curation" element={<AdminCuration />} />
                   <Route path="logs" element={<AdminLogs />} />
+                  <Route path="audit" element={<AdminAudit />} />
                   <Route path="policy" element={<AdminPolicy />} />
                   <Route path="settings" element={<AdminSettings />} />
                   <Route path="profile" element={<AdminProfile />} />
