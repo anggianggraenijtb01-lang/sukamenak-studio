@@ -3,6 +3,7 @@ import { env } from './config/env.js';
 import { closePool } from './db/pool.js';
 import { logger } from './lib/logger.js';
 import { awaitQueueIdle, closeQueue } from './queue/index.js';
+import { reapStaleGenerations, startStaleGenerationReaper } from './retention/reaper.js';
 import { startRetentionSchedule } from './retention/retention.js';
 
 const app = createApp();
@@ -13,6 +14,15 @@ const server = app.listen(env.PORT, () => {
 // With the bullmq driver the worker process owns the retention schedule; inline mode has no worker.
 const stopRetention = env.QUEUE_DRIVER === 'inline' ? startRetentionSchedule() : () => undefined;
 
+// Jobs left queued/running by a process that died (or was force-stopped after the shutdown timeout) would
+// otherwise stay `running` forever and keep counting towards the creator's in-flight limit. With the inline
+// driver this process is the only job runner, so anything still active at boot is an orphan; with bullmq
+// other workers may be mid-job, so only the age-based sweep below applies.
+if (env.QUEUE_DRIVER === 'inline') {
+  reapStaleGenerations({ staleAfterMs: 0 }).catch((err: unknown) => logger.error({ err_name: (err as Error)?.name }, 'boot-time stale sweep failed'));
+}
+const stopReaper = startStaleGenerationReaper();
+
 let shuttingDown = false;
 async function shutdown(signal: string): Promise<void> {
   if (shuttingDown) return;
@@ -21,6 +31,7 @@ async function shutdown(signal: string): Promise<void> {
   const force = setTimeout(() => process.exit(1), 10_000);
   force.unref();
   stopRetention();
+  stopReaper();
   server.close(async () => {
     try {
       await awaitQueueIdle();
