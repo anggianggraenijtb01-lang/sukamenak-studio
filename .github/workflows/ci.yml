@@ -91,13 +91,39 @@ jobs:
           path: backend/coverage
           if-no-files-found: ignore
 
-  # Builds the frontend and scans dist/assets/*.js for core prompt text and the old AES key.
-  # The frontend still ships a mock core prompt and key (cleaned up in Phase D), so this job is expected to fail today.
-  # It is advisory (continue-on-error) until then: make it blocking by removing `continue-on-error` after Phase D.
-  prompt-leak-bundle:
-    name: prompt-leak-bundle (advisory until Phase D)
+  frontend:
+    name: frontend (typecheck, test, build)
     runs-on: ubuntu-latest
-    continue-on-error: true
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  # Builds the frontend and scans dist/assets/*.js for core prompt text and the old AES key, and scans
+  # frontend/src for the same markers. Blocking: PRD section 9 requires it green before anything merges to main
+  # (the frontend no longer ships a mock core prompt or key since phase D).
+  prompt-leak-bundle:
+    name: prompt-leak-bundle
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
       postgres:
@@ -128,12 +154,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            backend/package-lock.json
 
       - name: Build frontend
         working-directory: frontend
-        # frontend/ has no lockfile yet, so `npm install` (not `npm ci`).
         run: |
-          npm install --no-audit --no-fund
+          npm ci
           npm run build
 
       - name: Install backend
@@ -146,7 +175,7 @@ jobs:
           test -d ../frontend/dist/assets
           npx vitest run test/security/prompt-leak.spec.ts
 
-      - name: Frontend source scan (informational)
+      - name: Frontend source scan
         working-directory: backend
         env:
           CHECK_FRONTEND_SOURCE: '1'
