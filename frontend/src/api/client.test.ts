@@ -289,6 +289,23 @@ describe('single-flight refresh', () => {
     expect(events).toEqual([]);
   });
 
+  it('restoreSession rejects, and does not end the session, when the server cannot be reached', async () => {
+    for (const unreachable of [
+      async () => fail(503, 'INTERNAL_ERROR'),
+      async () => fail(500, 'INTERNAL_ERROR'),
+      async () => fail(429, 'RATE_LIMIT_EXCEEDED'),
+      async () => {
+        throw new TypeError('fetch failed');
+      },
+    ]) {
+      const client = createApiClient({ baseUrl: BASE, fetch: unreachable as unknown as typeof fetch });
+      const events: AuthEvent[] = [];
+      client.subscribe((e) => events.push(e));
+      await expect(client.restoreSession()).rejects.toMatchObject({ name: 'ApiError' });
+      expect(events).toEqual([]);
+    }
+  });
+
   it('ends the session when the account is deactivated (403 ACCOUNT_INACTIVE)', async () => {
     const client = createApiClient({
       baseUrl: BASE,

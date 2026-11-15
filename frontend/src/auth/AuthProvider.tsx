@@ -3,10 +3,16 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../api/client';
 import * as authApi from '../api/auth';
 import { getMe } from '../api/creator';
+import { isTransientError } from '../api/errors';
 import { queryKeys } from '../api/queryKeys';
 import type { MeResponse, Role, User } from '../api/types';
 
-export type AuthStatus = 'loading' | 'authenticated' | 'anonymous';
+/**
+ * `unavailable` means the server could not be asked whether there is a session (network error, 5xx, 429), so we
+ * genuinely do not know. It is not `anonymous`: sending the user to the login page, or forgetting them, because a
+ * deploy or restart was in progress would end a perfectly good session.
+ */
+export type AuthStatus = 'loading' | 'authenticated' | 'anonymous' | 'unavailable';
 
 export interface RegisterInput {
   name: string;
@@ -27,6 +33,8 @@ export interface AuthContextValue {
   /** Why the session ended on its own (expired / deactivated), shown once on the login page. */
   sessionNotice: string | null;
   clearSessionNotice: () => void;
+  /** Runs the start-up session check again; for the "service unavailable" screen. */
+  retry: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -64,32 +72,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [queryClient],
   );
 
-  // Start-up: silent refresh with the httpOnly cookie, then GET /me. Both go through the client's single-flight
-  // refresh, so StrictMode's double effect cannot trigger two refreshes.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const session = await authApi.restoreSession();
-        if (!session) throw new Error('anonymous');
-        const me = await getMe();
-        if (cancelled || booted.current) return; // a login finished first: it wins
-        queryClient.setQueryData<MeResponse>(queryKeys.me, me);
-        setUser(me.user);
-        booted.current = true;
-        setStatus('authenticated');
-      } catch {
-        if (cancelled || booted.current) return;
+  // Start-up (and "Coba lagi"): silent refresh with the httpOnly cookie, then GET /me. Both go through the client's
+  // single-flight refresh, so StrictMode's double effect cannot trigger two refreshes.
+  const bootstrap = useCallback(
+    async (isCancelled: () => boolean) => {
+      const becomeAnonymous = () => {
         apiClient.clearSession();
         setUser(null);
         booted.current = true;
         setStatus('anonymous');
+      };
+      try {
+        const session = await authApi.restoreSession();
+        if (!session) {
+          // The server answered: there is no valid session.
+          if (!isCancelled() && !booted.current) becomeAnonymous();
+          return;
+        }
+        const me = await getMe();
+        if (isCancelled() || booted.current) return; // a login finished first: it wins
+        queryClient.setQueryData<MeResponse>(queryKeys.me, me);
+        setUser(me.user);
+        booted.current = true;
+        setStatus('authenticated');
+      } catch (err) {
+        if (isCancelled() || booted.current) return;
+        if (isTransientError(err)) {
+          // The server could not be asked (down, restarting, rate limited), so the session is of unknown validity.
+          // Treating that as "signed out" would log people out every time the backend restarts.
+          setUser(null);
+          setStatus('unavailable');
+          return;
+        }
+        becomeAnonymous();
       }
-    })();
+    },
+    [queryClient],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    void bootstrap(() => cancelled);
     return () => {
       cancelled = true;
     };
-  }, [queryClient]);
+  }, [bootstrap]);
+
+  const retry = useCallback(() => {
+    setStatus('loading');
+    void bootstrap(() => false);
+  }, [bootstrap]);
 
   const login = useCallback(
     async (email: string, password: string) => {
@@ -133,8 +165,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clearSessionNotice = useCallback(() => setSessionNotice(null), []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, status, login, register, logout, refreshUser, sessionNotice, clearSessionNotice }),
-    [user, status, login, register, logout, refreshUser, sessionNotice, clearSessionNotice],
+    () => ({ user, status, login, register, logout, refreshUser, sessionNotice, clearSessionNotice, retry }),
+    [user, status, login, register, logout, refreshUser, sessionNotice, clearSessionNotice, retry],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

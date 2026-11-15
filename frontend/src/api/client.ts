@@ -247,9 +247,14 @@ export function createApiClient(options: ApiClientOptions = {}) {
     return refreshInFlight;
   };
 
-  /** Silent refresh with the cookie on app start. Resolves to the session, or `null` when anonymous. */
+  /**
+   * Silent refresh with the cookie on app start. Resolves to the session, or `null` when the server says
+   * there is no valid session. Rejects with the `ApiError` when the server could not be asked (network error,
+   * timeout, 5xx, 429): that is "service unavailable", not "signed out", and callers must not treat it as the latter.
+   */
   const restoreSession = async (): Promise<Session | null> => {
     const result = await refresh();
+    if (result.status === 'failed') throw result.error;
     return result.status === 'ok' ? result.session : null;
   };
 

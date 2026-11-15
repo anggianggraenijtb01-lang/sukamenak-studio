@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { Loader2, ShieldAlert } from 'lucide-react';
+import { Loader2, RefreshCw, ShieldAlert, WifiOff } from 'lucide-react';
 import type { Role } from '../api/types';
 import { homePathForRole, useAuth } from './AuthProvider';
 
@@ -10,6 +10,36 @@ export const AuthLoading: React.FC = () => (
     <span className="sr-only">Memuat sesi...</span>
   </div>
 );
+
+/**
+ * Shown when the server could not be asked whether the session is valid (it is down, restarting or rate limiting).
+ * The user is neither sent to the login page nor forgotten: their session may well still be good.
+ */
+export const ServiceUnavailablePage: React.FC = () => {
+  const { retry } = useAuth();
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6 text-[#0F172A]" role="alert">
+      <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 p-8 shadow-xl text-center space-y-4">
+        <div className="w-16 h-16 mx-auto rounded-2xl bg-[#EFF6FF] border-2 border-[#BFDBFE] flex items-center justify-center text-[#2563EB]">
+          <WifiOff className="w-8 h-8" aria-hidden="true" />
+        </div>
+        <div className="text-[11px] font-black uppercase tracking-wider text-[#2563EB]">Layanan Belum Tersedia</div>
+        <h1 className="text-2xl font-black tracking-tight">Tidak dapat menghubungi server</h1>
+        <p className="text-sm text-slate-500 leading-relaxed">
+          Server sedang tidak dapat dijangkau, mungkin sedang dimulai ulang. Sesi Anda tidak dihapus. Coba lagi beberapa saat lagi.
+        </p>
+        <button
+          type="button"
+          onClick={retry}
+          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-extrabold text-sm transition-all"
+        >
+          <RefreshCw className="w-4 h-4" aria-hidden="true" />
+          Coba Lagi
+        </button>
+      </div>
+    </div>
+  );
+};
 
 /** Shown to a signed-in user who opens a page that needs a higher role (HTTP 403 equivalent). */
 export const ForbiddenPage: React.FC = () => {
@@ -49,6 +79,7 @@ export const RequireAuth: React.FC<GuardProps> = ({ children }) => {
   const { status } = useAuth();
   const location = useLocation();
   if (status === 'loading') return <AuthLoading />;
+  if (status === 'unavailable') return <ServiceUnavailablePage />;
   if (status === 'anonymous') return <Navigate to="/login" replace state={{ from: location }} />;
   return <>{children ?? <Outlet />}</>;
 };
@@ -61,6 +92,7 @@ export const RequireRole: React.FC<GuardProps & { role: Role }> = ({ role, child
   const { status, user } = useAuth();
   const location = useLocation();
   if (status === 'loading') return <AuthLoading />;
+  if (status === 'unavailable') return <ServiceUnavailablePage />;
   if (status === 'anonymous' || !user) return <Navigate to="/login" replace state={{ from: location }} />;
   if (role === 'admin' && user.role !== 'admin') return <ForbiddenPage />;
   return <>{children ?? <Outlet />}</>;

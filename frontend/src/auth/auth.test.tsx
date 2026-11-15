@@ -1,7 +1,7 @@
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { AuthProvider, useAuth } from './AuthProvider';
@@ -101,6 +101,61 @@ describe('AuthProvider start-up', () => {
     stubBackend({ cookie: false });
     renderApp('/any');
     await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('anonymous:-'));
+  });
+
+  describe('when the server cannot be reached', () => {
+    // A fake backend that is down until `bringUp()` is called, then behaves like a signed-in creator.
+    function stubFlakyBackend(mode: 'refresh-503' | 'network-error' | 'me-503') {
+      let up = false;
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input: RequestInfo | URL) => {
+          const url = String(input);
+          if (!up && mode === 'network-error') throw new TypeError('fetch failed');
+          if (url.endsWith('/auth/refresh')) {
+            return !up && mode === 'refresh-503' ? res(503, { status: 'error', message: 'x', error_code: 'INTERNAL_ERROR' }) : res(200, sessionBody('creator'));
+          }
+          if (url.endsWith('/me')) {
+            return !up && mode === 'me-503' ? res(503, { status: 'error', message: 'x', error_code: 'INTERNAL_ERROR' }) : res(200, meBody('creator'));
+          }
+          return res(404, { status: 'error', message: 'x', error_code: 'NOT_FOUND' });
+        }),
+      );
+      return { bringUp: () => (up = true) };
+    }
+
+    it.each(['refresh-503', 'network-error', 'me-503'] as const)(
+      'is "unavailable", not signed out, and does not bounce to /login (%s)',
+      async (mode) => {
+        stubFlakyBackend(mode);
+        renderApp('/creator/studio');
+        await screen.findByText('Tidak dapat menghubungi server');
+        expect(screen.getByTestId('status').textContent).toBe('unavailable:-');
+        expect(screen.queryByText('LOGIN PAGE')).toBeNull();
+        expect(screen.queryByText('CREATOR AREA')).toBeNull();
+        expect(screen.getByRole('alert')).toBeTruthy();
+      },
+    );
+
+    it('shows the same screen on an admin route, never the login page', async () => {
+      stubFlakyBackend('refresh-503');
+      renderApp('/admin/dashboard');
+      await screen.findByText('Tidak dapat menghubungi server');
+      expect(screen.queryByText('LOGIN PAGE')).toBeNull();
+    });
+
+    it('recovers with "Coba Lagi" once the server is back, keeping the user signed in', async () => {
+      const backend = stubFlakyBackend('refresh-503');
+      renderApp('/creator/studio');
+      await screen.findByText('Tidak dapat menghubungi server');
+
+      backend.bringUp();
+      fireEvent.click(screen.getByRole('button', { name: /coba lagi/i }));
+
+      await screen.findByText('CREATOR AREA');
+      expect(screen.getByTestId('status').textContent).toBe('authenticated:creator');
+      expect(screen.queryByText('Tidak dapat menghubungi server')).toBeNull();
+    });
   });
 });
 
