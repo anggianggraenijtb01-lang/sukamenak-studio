@@ -1,6 +1,6 @@
-// D2: still mock data / local state. Replace with the real API in src/api/creator.ts (see queryKeys.ts for cache keys).
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
 import {
   Sparkles,
   ArrowRight,
@@ -9,7 +9,6 @@ import {
   Wand2,
   Sliders,
   Zap,
-  BookOpen,
   Camera,
   Sun,
   Layers,
@@ -18,9 +17,18 @@ import {
   CheckCircle2,
   XCircle,
   Lightbulb,
-  FileText,
   RotateCcw,
+  BookmarkPlus,
+  Loader2,
 } from 'lucide-react';
+import { improvePrompt } from '../../api/creator';
+import { getErrorMessage } from '../../api/errors';
+import type { ImprovePromptResponse } from '../../api/types';
+import { useCopy } from '../../components/creator/clipboard';
+import { CompactnessMeter } from '../../components/creator/CompactnessMeter';
+import { studioHandoff } from '../../components/creator/handoff';
+import { ANALYZE_MAX_CHARS, usePromptAnalysis } from '../../components/creator/promptAnalysis';
+import { SavePromptDialog, SavedPrompts } from '../../components/creator/SavedPrompts';
 
 interface CaseStudy {
   id: string;
@@ -164,68 +172,27 @@ export const Advisor: React.FC = () => {
   const navigate = useNavigate();
   const [selectedCase, setSelectedCase] = useState<string>('kuliner');
   const [activeFormulaTab, setActiveFormulaTab] = useState<number>(0);
-  const [copied, setCopied] = useState(false);
+  const { copiedKey, failedKey, copy } = useCopy();
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
 
   // Workbench state
-  const [rawPrompt, setRawPrompt] = useState<string>(
-    'Tolong dong buatin foto produk keripik tempe yang sangat bagus sekali renyah dengan daun jeruk segar di piring kayu dengan pencahayaan sinar matahari pagi yang super tajam dan resolusi 8k hd sangat detail tanpa ada tangan manusia yang kelihatan.'
-  );
+  const [rawPrompt, setRawPrompt] = useState<string>('');
 
-  // Real-time Optimization Engine
-  const { optimizedResult, detectedWaste, compactnessScore, wordSavings } = useMemo(() => {
-    let text = rawPrompt.trim();
-    if (!text) {
-      return {
-        optimizedResult: 'Ketik atau tempelkan ide prompt di panel kiri untuk melihat hasil optimasi studio secara langsung.',
-        detectedWaste: [],
-        compactnessScore: 0,
-        wordSavings: 0,
-      };
-    }
+  // Real-time compactness: `POST /prompts/analyze`, debounced (an estimate fills the gap while it loads or fails).
+  const analysis = usePromptAnalysis(rawPrompt);
 
-    const wasteFound: string[] = [];
-    const wastePatterns = [
-      { pattern: /tolong\s+(dong\s+)?(buatin|buatkan|bikin|bikinin)?/gi, label: 'Basa-basi (Tolong buatkan)' },
-      { pattern: /saya\s+mau\s+(foto|gambar)?/gi, label: 'Kalimat pembuka mubazir' },
-      { pattern: /sangat\s+(bagus|indah|cantik|keren|enak|lezat|mantap)\s*(sekali|banget)?/gi, label: 'Kata sifat subjektif' },
-      { pattern: /super\s+(tajam|bagus|detail|keren)/gi, label: 'Hiperbola (Super tajam)' },
-      { pattern: /(resolusi\s+)?8k\s*(hd)?/gi, label: 'Buzzword palsu (8k HD)' },
-      { pattern: /resolusi\s+(tinggi|ultra|maksimal)/gi, label: 'Buzzword resolusi' },
-      { pattern: /kayak\s+katalog\s+olshop\s+terkenal/gi, label: 'Perbandingan abstrak' },
-      { pattern: /jelas\s+100\s*(persen|%)/gi, label: 'Penekanan tidak terukur' },
-    ];
-
-    let cleaned = text;
-    wastePatterns.forEach((w) => {
-      if (w.pattern.test(cleaned)) {
-        wasteFound.push(w.label);
-        cleaned = cleaned.replace(w.pattern, ' ');
-      }
-    });
-
-    // Clean whitespace
-    cleaned = cleaned.replace(/\s+/g, ' ').trim();
-
-    // Standardize structure if needed
-    if (!/tanpa\s+(subjek\s+)?tangan/i.test(cleaned)) {
-      cleaned += ', tanpa subjek tangan manusia';
-    }
-    if (!/4:5/i.test(cleaned)) {
-      cleaned += ', komposisi komersial 4:5';
-    }
-
-    const rawWordCount = text.split(/\s+/).filter(Boolean).length;
-    const cleanWordCount = cleaned.split(/\s+/).filter(Boolean).length;
-    const score = Math.min(98, Math.max(70, Math.round(100 - (wasteFound.length * 6))));
-    const savings = Math.max(0, Math.round(((text.length - cleaned.length) / Math.max(1, text.length)) * 100));
-
-    return {
-      optimizedResult: cleaned,
-      detectedWaste: wasteFound,
-      compactnessScore: score,
-      wordSavings: savings,
-    };
-  }, [rawPrompt]);
+  // F-08: a prompt pasted from another LLM gets a clearer, more compact version (`POST /prompts/improve`).
+  const [improved, setImproved] = useState<{ source: string; data: ImprovePromptResponse } | null>(null);
+  const improve = useMutation({
+    mutationFn: (text: string) => improvePrompt({ text }),
+    onSuccess: (data, text) => setImproved({ source: text, data }),
+  });
+  const trimmedRaw = rawPrompt.trim();
+  const tooLong = trimmedRaw.length > ANALYZE_MAX_CHARS;
+  const upToDate = improved !== null && improved.source === trimmedRaw;
+  const outputText = upToDate ? improved.data.improved_text : '';
+  const reduction = upToDate && trimmedRaw.length > 0 ? Math.max(0, Math.round(((trimmedRaw.length - outputText.length) / trimmedRaw.length) * 100)) : 0;
 
   const currentCase = useMemo(() => {
     return CASE_STUDIES.find((c) => c.id === selectedCase) || CASE_STUDIES[0];
@@ -246,17 +213,11 @@ export const Advisor: React.FC = () => {
     });
   };
 
-  const handleCopy = () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(optimizedResult);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const handleUseInStudio = () => {
-    localStorage.setItem('sukamenak_active_prompt', optimizedResult);
-    navigate('/creator/studio');
+  // The text goes to the Studio through the router state, never through localStorage.
+  const useInStudio = (text: string) => navigate('/creator/studio', { state: studioHandoff(text) });
+  const loadIntoWorkbench = (text: string) => {
+    setRawPrompt(text);
+    document.getElementById('workbench-section')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const formulaComponents = [
@@ -595,46 +556,50 @@ export const Advisor: React.FC = () => {
               AREA UJI SIMULATOR
             </span>
             <h2 className="text-lg sm:text-xl font-black text-[#0F172A]">
-              Simulator Pembersih <span className="text-[#2563EB]">Prompt Real-Time</span>
+              Perapi <span className="text-[#2563EB]">Prompt</span>
             </h2>
           </div>
           <span className="text-xs text-slate-500 font-medium hidden sm:inline">
-            Otomatis menyaring kata mubazir &amp; menyusun formula 4:5
+            Tempel prompt dari AI lain, lalu jadikan lebih ringkas &amp; terarah
           </span>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-          
+
           {/* Left Box: Raw / External Prompt Input */}
           <div className="bg-white rounded-3xl border border-[#CBD5E1] p-6 sm:p-7 shadow-sm flex flex-col justify-between space-y-4">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-wider text-[#1E40AF] flex items-center gap-1.5">
+                <label htmlFor="advisor-raw-prompt" className="text-xs font-black uppercase tracking-wider text-[#1E40AF] flex items-center gap-1.5">
                   <Sliders className="w-3.5 h-3.5 text-[#2563EB]" />
                   Prompt Mentah / Ide Awal Anda
-                </span>
+                </label>
                 <span className="text-[11px] font-mono text-slate-400">
                   {rawPrompt.length} Karakter &bull; {rawPrompt.split(/\s+/).filter(Boolean).length} Kata
                 </span>
               </div>
 
               <textarea
+                id="advisor-raw-prompt"
                 rows={7}
                 value={rawPrompt}
+                maxLength={ANALYZE_MAX_CHARS}
                 onChange={(e) => setRawPrompt(e.target.value)}
-                placeholder="Tempelkan kalimat prompt mentah dari medsos atau ide bebas di sini..."
+                placeholder="Tempelkan kalimat prompt mentah dari AI lain atau medsos di sini..."
                 className="w-full p-4 rounded-2xl bg-[#F8FAFC] border border-[#CBD5E1] text-xs sm:text-sm text-[#0F172A] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-[#2563EB] transition-all leading-relaxed resize-none font-sans"
               />
 
-              {/* Detected waste indicator */}
-              {detectedWaste.length > 0 && (
+              <CompactnessMeter state={analysis} />
+
+              {/* Filler words found by the analysis */}
+              {analysis.view.fillerWords.length > 0 && (
                 <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-xs space-y-1">
                   <span className="text-[10px] font-black uppercase text-amber-700 flex items-center gap-1">
                     <Info className="w-3 h-3 text-amber-600" />
-                    Terdeteksi {detectedWaste.length} pola kata mubazir yang disaring otomatis:
+                    Terdeteksi {analysis.view.fillerWords.length} kata/frasa pengisi:
                   </span>
                   <div className="flex flex-wrap gap-1.5 pt-0.5">
-                    {detectedWaste.map((w, idx) => (
+                    {analysis.view.fillerWords.map((w, idx) => (
                       <span key={idx} className="px-2 py-0.5 rounded-md bg-white border border-amber-300 text-[10px] font-semibold text-amber-800">
                         {w}
                       </span>
@@ -644,30 +609,51 @@ export const Advisor: React.FC = () => {
               )}
             </div>
 
-            <div className="pt-2 flex items-center justify-between text-xs text-slate-500 border-t border-slate-100">
-              <span>Filter otomatis kata mubazir &amp; instruksi ganda</span>
-              <div className="flex items-center gap-2">
+            <div className="pt-2 space-y-3 border-t border-slate-100">
+              {improve.isError && (
+                <div role="alert" className="p-3 rounded-xl bg-orange-50 border border-orange-200 text-xs text-[#EA580C] font-semibold">
+                  {getErrorMessage(improve.error)}
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRawPrompt(CASE_STUDIES[0].raw);
+                      improve.reset();
+                    }}
+                    className="font-bold text-[#2563EB] hover:underline cursor-pointer flex items-center gap-1"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Isi Contoh</span>
+                  </button>
+                  <span>&bull;</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRawPrompt('');
+                      improve.reset();
+                    }}
+                    className="font-bold text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
+                  >
+                    Kosongkan
+                  </button>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setRawPrompt(CASE_STUDIES[0].raw)}
-                  className="font-bold text-[#2563EB] hover:underline cursor-pointer flex items-center gap-1"
+                  onClick={() => improve.mutate(trimmedRaw)}
+                  disabled={!trimmedRaw || tooLong || improve.isPending}
+                  className="px-5 py-2.5 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-blue-500/25 transition-all cursor-pointer hover:shadow-lg disabled:opacity-60 disabled:pointer-events-none"
                 >
-                  <RotateCcw className="w-3 h-3" />
-                  <span>Isi Contoh</span>
-                </button>
-                <span>&bull;</span>
-                <button
-                  type="button"
-                  onClick={() => setRawPrompt('')}
-                  className="font-bold text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
-                >
-                  Kosongkan
+                  {improve.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+                  <span>{improve.isPending ? 'Merapikan...' : 'Rapikan Prompt'}</span>
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Right Box: Output card showing optimized prompt & compactness score */}
+          {/* Right Box: Output card showing the improved prompt & compactness score */}
           <div className="bg-white rounded-3xl border border-[#2563EB]/40 p-6 sm:p-7 shadow-md flex flex-col justify-between space-y-4 relative overflow-hidden">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -675,57 +661,108 @@ export const Advisor: React.FC = () => {
                   <Wand2 className="w-3.5 h-3.5 text-[#2563EB]" />
                   <span className="bg-gradient-to-r from-[#2563EB] to-[#0284C7] bg-clip-text text-transparent">Hasil Prompt Ringkas &amp; Teroptimasi</span>
                 </span>
-                
-                {/* Compactness Score Badge */}
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] text-xs font-black text-[#2563EB]">
-                  <Zap className="w-3.5 h-3.5 fill-[#2563EB]" />
-                  <span>Efisiensi: {compactnessScore}% Terarah</span>
-                </div>
+
+                {upToDate && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] text-xs font-black text-[#2563EB]">
+                    <Zap className="w-3.5 h-3.5 fill-[#2563EB]" />
+                    <span>Skor: {improved.data.score_before}% &rarr; {improved.data.score_after}%</span>
+                  </div>
+                )}
               </div>
 
-              <div className="p-4 rounded-2xl bg-[#F8FAFC] border border-[#CBD5E1] text-xs sm:text-sm text-[#0F172A] font-mono leading-relaxed min-h-[160px] select-all">
-                {optimizedResult}
+              <div
+                data-testid="improved-output"
+                className="p-4 rounded-2xl bg-[#F8FAFC] border border-[#CBD5E1] text-xs sm:text-sm text-[#0F172A] font-mono leading-relaxed min-h-[160px] select-all whitespace-pre-wrap"
+              >
+                {upToDate ? (
+                  outputText
+                ) : (
+                  <span className="text-slate-400 font-sans">
+                    {improved
+                      ? 'Teks berubah sejak terakhir dirapikan. Tekan "Rapikan Prompt" lagi untuk hasil terbaru.'
+                      : 'Tempelkan prompt di panel kiri, lalu tekan "Rapikan Prompt" untuk mendapat versi yang lebih ringkas dan jelas.'}
+                  </span>
+                )}
               </div>
 
-              {/* Optimization stats */}
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
-                  <span className="text-[10px] text-slate-500 block">Karakter Output:</span>
-                  <span className="font-bold text-[#0F172A]">{optimizedResult.length} Karakter</span>
+              {upToDate && (
+                <>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
+                      <span className="text-[10px] text-slate-500 block">Karakter Output:</span>
+                      <span className="font-bold text-[#0F172A]">{outputText.length} Karakter</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
+                      <span className="text-[10px] text-slate-500 block">Penghematan Panjang:</span>
+                      <span className="font-bold text-[#2563EB]">{reduction}% Lebih Ringkas</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                    <span className="px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 font-bold text-slate-600">
+                      {improved.data.source === 'model' ? 'Dirapikan oleh model AI' : 'Dirapikan otomatis (aturan penyaring)'}
+                    </span>
+                  </div>
+                  {improved.data.suggestions.length > 0 && (
+                    <ul className="space-y-1 text-[11px] text-slate-600">
+                      {improved.data.suggestions.map((tip, i) => (
+                        <li key={i} className="flex items-start gap-1.5">
+                          <Sparkles className="w-3 h-3 text-[#2563EB] shrink-0 mt-0.5" />
+                          <span>{tip}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+              {saveNotice && (
+                <div role="status" className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs font-semibold text-[#2563EB]">
+                  {saveNotice}
                 </div>
-                <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
-                  <span className="text-[10px] text-slate-500 block">Penghematan Panjang:</span>
-                  <span className="font-bold text-[#2563EB]">{wordSavings}% Lebih Ringkas</span>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Action Buttons Row */}
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={handleCopy}
-                className="px-4 py-2.5 rounded-xl border border-[#CBD5E1] text-xs font-bold text-slate-700 hover:border-[#2563EB] hover:text-[#2563EB] flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Tersalin!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Salin Prompt</span>
-                  </>
-                )}
-              </button>
+            <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void copy('output', outputText)}
+                  disabled={!upToDate}
+                  className="px-4 py-2.5 rounded-xl border border-[#CBD5E1] text-xs font-bold text-slate-700 hover:border-[#2563EB] hover:text-[#2563EB] flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  {copiedKey === 'output' ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Tersalin!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>{failedKey === 'output' ? 'Salin manual dari kotak' : 'Salin Prompt'}</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSaveNotice(null);
+                    setSaveOpen(true);
+                  }}
+                  disabled={!upToDate}
+                  className="px-4 py-2.5 rounded-xl border border-[#CBD5E1] text-xs font-bold text-slate-700 hover:border-[#2563EB] hover:text-[#2563EB] flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  <BookmarkPlus className="w-3.5 h-3.5" />
+                  <span>Simpan</span>
+                </button>
+              </div>
 
               <button
                 type="button"
-                onClick={handleUseInStudio}
-                className="px-5 py-2.5 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-blue-500/25 transition-all cursor-pointer hover:shadow-lg"
+                onClick={() => useInStudio(outputText)}
+                disabled={!upToDate}
+                className="px-5 py-2.5 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-blue-500/25 transition-all cursor-pointer hover:shadow-lg disabled:opacity-50 disabled:pointer-events-none"
               >
-                <span>Gunakan di Studio</span>
+                <span>Pakai di Studio</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -733,6 +770,20 @@ export const Advisor: React.FC = () => {
 
         </div>
       </section>
+
+      {/* ── SECTION 5: PERSONAL PROMPT LIBRARY ── */}
+      <SavedPrompts onUseInStudio={useInStudio} onLoad={loadIntoWorkbench} />
+
+      {saveOpen && upToDate && (
+        <SavePromptDialog
+          text={outputText}
+          onSaved={(saved) => {
+            setSaveOpen(false);
+            setSaveNotice(`Tersimpan sebagai "${saved.title}" di Prompt Saya.`);
+          }}
+          onClose={() => setSaveOpen(false)}
+        />
+      )}
 
     </div>
   );

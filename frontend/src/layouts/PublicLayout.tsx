@@ -149,9 +149,13 @@ export const PublicLayout: React.FC = () => {
                   </a>
                 </li>
                 <li>
-                  <Link to="/creator/gallery" className="hover:text-white transition-colors">
+                  <a
+                    href="/#katalog-contoh"
+                    onClick={(e) => handleNavClick(e, 'katalog-contoh')}
+                    className="hover:text-white transition-colors cursor-pointer"
+                  >
                     Galeri Template
-                  </Link>
+                  </a>
                 </li>
                 <li>
                   <a
@@ -163,9 +167,13 @@ export const PublicLayout: React.FC = () => {
                   </a>
                 </li>
                 <li>
-                  <Link to="/creator/tutorials" className="hover:text-white transition-colors">
+                  <a
+                    href="/#cara-kerja"
+                    onClick={(e) => handleNavClick(e, 'cara-kerja')}
+                    className="hover:text-white transition-colors cursor-pointer"
+                  >
                     Panduan
-                  </Link>
+                  </a>
                 </li>
               </ul>
             </div>
@@ -206,8 +214,16 @@ export const PublicLayout: React.FC = () => {
           </div>
 
           {/* Bottom Copyright Divider */}
-          <div className="text-center text-xs text-slate-400 font-normal">
-            &copy; 2026 Sukamenak Studio. Bebas Biaya untuk Kemajuan Bersama.
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 font-normal">
+            <span>&copy; 2026 Sukamenak Studio. Bebas Biaya untuk Kemajuan Bersama.</span>
+            <nav aria-label="Informasi hukum" className="flex items-center gap-4">
+              <Link to="/privasi" className="hover:text-white transition-colors">
+                Kebijakan Privasi
+              </Link>
+              <Link to="/syarat" className="hover:text-white transition-colors">
+                Syarat Layanan
+              </Link>
+            </nav>
           </div>
         </div>
       </footer>
