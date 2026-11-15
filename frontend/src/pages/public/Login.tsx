@@ -4,6 +4,7 @@ import { Lock, ArrowRight, Eye, EyeOff, User, Loader2 } from 'lucide-react';
 import { useAuth, homePathForRole } from '../../auth/AuthProvider';
 import { getErrorMessage, isApiError } from '../../api/errors';
 import type { Role } from '../../api/types';
+import { Modal } from '../../components/creator/Modal';
 
 /** Where to go after signing in: the page the visitor came from, if their role may open it, else their home. */
 function pickRedirect(from: unknown, role: Role): string {
@@ -24,7 +25,7 @@ export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -185,27 +186,15 @@ export const Login: React.FC = () => {
               {fieldErrors.password && <p className="mt-1 text-[11px] font-semibold text-[#EA580C]">{fieldErrors.password}</p>}
             </div>
 
-            {/* Baris Opsi: Ingat Saya & Lupa Kata Sandi */}
-            <div className="flex items-center justify-between text-xs pt-0.5">
-              <label className="flex items-center gap-2 text-[#475569] font-medium cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded text-[#1E40AF] focus:ring-[#1E40AF] border-[#CBD5E1] accent-[#1E40AF]"
-                />
-                <span>Ingat saya</span>
-              </label>
-              <a
-                href="#bantuan"
-                onClick={(e) => {
-                  e.preventDefault();
-                  alert('Untuk bantuan pemulihan kata sandi warga RW 15, silakan hubungi pengurus sekretariat via WhatsApp: +62 812-3456-7890.');
-                }}
-                className="text-[#1E40AF] hover:underline font-semibold"
+            {/* Lupa Kata Sandi (sesi selalu berlaku 7 hari, jadi tidak ada opsi "Ingat saya") */}
+            <div className="flex items-center justify-end text-xs pt-0.5">
+              <button
+                type="button"
+                onClick={() => setHelpOpen(true)}
+                className="text-[#1E40AF] hover:underline font-semibold cursor-pointer"
               >
                 Lupa kata sandi?
-              </a>
+              </button>
             </div>
 
             {/* Pesan Kesalahan jika ada */}
@@ -242,6 +231,27 @@ export const Login: React.FC = () => {
         </div>
 
       </div>
+
+      {helpOpen && (
+        <Modal title="Lupa Kata Sandi?" onClose={() => setHelpOpen(false)} widthClass="max-w-md">
+          <p className="text-sm text-slate-600 leading-relaxed">
+            Untuk bantuan pemulihan kata sandi warga RW 15, silakan hubungi pengurus sekretariat via WhatsApp:{' '}
+            <a href="https://wa.me/6281234567890" target="_blank" rel="noopener noreferrer" className="font-bold text-[#1E40AF] hover:underline">
+              +62 812-3456-7890
+            </a>
+            .
+          </p>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setHelpOpen(false)}
+              className="px-5 py-2.5 rounded-xl bg-[#1E40AF] hover:bg-[#1D4ED8] text-white text-xs font-black transition-all cursor-pointer"
+            >
+              Mengerti
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

@@ -206,6 +206,18 @@ export const Register: React.FC = () => {
               </div>
             )}
 
+            <p className="text-[11px] text-[#64748B] leading-relaxed">
+              Dengan mendaftar, Anda menyetujui{' '}
+              <Link to="/syarat" target="_blank" rel="noopener noreferrer" className="font-bold text-[#1E40AF] hover:underline">
+                Syarat Layanan
+              </Link>{' '}
+              dan memahami{' '}
+              <Link to="/privasi" target="_blank" rel="noopener noreferrer" className="font-bold text-[#1E40AF] hover:underline">
+                Kebijakan Privasi
+              </Link>{' '}
+              kami.
+            </p>
+
             {/* Tombol Aksi Utama: Daftar Sekarang → */}
             <button
               type="submit"

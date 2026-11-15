@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, useMe } from '../auth/AuthProvider';
 import { LogoIcon } from '../components/common/Logo';
@@ -27,16 +27,6 @@ export const CreatorLayout: React.FC = () => {
   const initial = displayName.trim().charAt(0).toUpperCase() || '?';
   const roleLabel = user?.role === 'admin' ? 'Admin Sukamenak' : 'Kreator UMKM Sukamenak';
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  // D2: the avatar photo is still a per-browser localStorage mock (no avatar endpoint in the API yet); decide with ProfilePage.
-  const [avatarImage, setAvatarImage] = useState<string | null>(() => localStorage.getItem('sukamenak_user_avatar'));
-
-  useEffect(() => {
-    const handleAvatarUpdate = () => {
-      setAvatarImage(localStorage.getItem('sukamenak_user_avatar'));
-    };
-    window.addEventListener('avatarUpdated', handleAvatarUpdate);
-    return () => window.removeEventListener('avatarUpdated', handleAvatarUpdate);
-  }, []);
 
   // 7 Standard Creator Navigation Items with 56px rows
   const creatorMenus = [
@@ -86,19 +76,14 @@ export const CreatorLayout: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowProfileMenu(!showProfileMenu)}
+            aria-haspopup="menu"
+            aria-expanded={showProfileMenu}
+            aria-label={`Menu akun ${displayName}`}
             className="flex items-center gap-2.5 pl-2 pr-3.5 py-1.5 rounded-full bg-white border border-[#CBD5E1] hover:border-[#2563EB] shadow-xs hover:shadow-md transition-all cursor-pointer group"
           >
-            {avatarImage ? (
-              <img
-                src={avatarImage}
-                alt={`Foto Profil ${displayName}`}
-                className="w-8 h-8 rounded-full object-cover border border-[#BFDBFE]"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] flex items-center justify-center text-xs font-black text-[#2563EB]">
-                {initial}
-              </div>
-            )}
+            <div className="w-8 h-8 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] flex items-center justify-center text-xs font-black text-[#2563EB]" aria-hidden="true">
+              {initial}
+            </div>
             <span className="text-xs sm:text-sm font-bold text-[#0F172A] group-hover:text-[#2563EB] transition-colors">
               {displayName}
             </span>
@@ -293,8 +278,16 @@ export const CreatorLayout: React.FC = () => {
           </div>
 
           {/* Bottom Copyright Divider */}
-          <div className="text-center text-xs text-slate-400 font-normal">
-            &copy; 2026 Sukamenak Studio. Bebas Biaya untuk Kemajuan Bersama.
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 font-normal">
+            <span>&copy; 2026 Sukamenak Studio. Bebas Biaya untuk Kemajuan Bersama.</span>
+            <nav aria-label="Informasi hukum" className="flex items-center gap-4">
+              <Link to="/privasi" className="hover:text-white transition-colors">
+                Kebijakan Privasi
+              </Link>
+              <Link to="/syarat" className="hover:text-white transition-colors">
+                Syarat Layanan
+              </Link>
+            </nav>
           </div>
         </div>
       </footer>
