@@ -119,6 +119,13 @@ To go live, enter the real prompts in the admin **Core Prompt Manager** (`POST /
 activate them as a new version. They are stored AES-256-GCM encrypted in the database and exist nowhere else: no file, no
 environment variable, no commit. Keep the original text in the team's private store, not in this repository.
 
+**Checking it as an admin.** Every `CorePromptMeta` carries `is_placeholder` (a flag, never any text), and
+`GET /admin/dashboard` answers `core_prompts.placeholder_active_keys`: the keys whose active version is still a stand-in. The
+flag is computed once, when the version is written, so reading it never decrypts anything. The admin UI shows a warning banner
+on the dashboard and on Core Prompt Manager, and a "Pengganti" badge on each stand-in version. An empty list means every active
+prompt is a real one. In `NODE_ENV=production` a generation from a stand-in fails with `CORE_PROMPT_REQUIRED` (422) and does
+not use up the creator's allowance.
+
 `test/unit/seedData.spec.ts` fails when a committed body does not carry the marker, so pasting a real prompt into
 `corePrompts.ts` turns CI red before it can be merged. The leak specs scan for the stand-in text; the code paths they
 exercise are the same ones that protect the real prompts.

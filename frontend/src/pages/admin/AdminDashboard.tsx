@@ -17,6 +17,7 @@ import {
 import { adminGetDashboard, adminListGenerations } from '../../api/admin';
 import { queryKeys } from '../../api/queryKeys';
 import type { AdminDashboard as DashboardData } from '../../api/types';
+import { StandInPromptBanner } from '../../components/admin/StandInPromptBanner';
 import {
   Badge,
   Banner,
@@ -166,6 +167,8 @@ export const AdminDashboard: React.FC = () => {
               </Link>
             </Banner>
           )}
+
+          <StandInPromptBanner keys={data.core_prompts.placeholder_active_keys} showLink />
 
           {/* 2. DASHBOARD MONITORING: 3 METRIC CARDS */}
           <section className="grid grid-cols-1 md:grid-cols-3 gap-5" aria-label="Ringkasan utama">

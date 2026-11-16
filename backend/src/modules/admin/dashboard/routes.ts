@@ -42,7 +42,7 @@ dashboardRouter.get('/', validate(schemas), async (req, res) => {
   const params = [env.APP_TIMEZONE, q.days];
 
   // Independent aggregates, each one SQL statement over the window.
-  const [totals, series, failures, models, counts] = await Promise.all([
+  const [totals, series, failures, models, counts, corePrompts] = await Promise.all([
     queryOne<TotalsRow>(
       `SELECT count(*) AS total,
               count(*) FILTER (WHERE status = 'done') AS done,
@@ -91,6 +91,8 @@ dashboardRouter.get('/', validate(schemas), async (req, res) => {
               (SELECT count(*) FROM users WHERE role = 'admin' AND is_active AND deleted_at IS NULL) AS active_admins,
               (SELECT count(*) FROM users WHERE role = 'creator' AND is_active AND deleted_at IS NULL) AS active_creators`,
     ),
+    // Key and stand-in flag only (never a body or ciphertext): is the active prompt still the committed stand-in?
+    query<{ key: string; is_placeholder: boolean }>('SELECT key, is_placeholder FROM core_prompts WHERE is_active ORDER BY key'),
   ]);
 
   const t = totals as TotalsRow;
@@ -131,6 +133,11 @@ dashboardRouter.get('/', validate(schemas), async (req, res) => {
           : null,
       })),
       counts,
+      core_prompts: {
+        active_count: corePrompts.length,
+        // Active prompts that are still stand-ins: production refuses to generate from these.
+        placeholder_active_keys: corePrompts.filter((c) => c.is_placeholder).map((c) => c.key),
+      },
     },
     'Ringkasan dashboard',
   );

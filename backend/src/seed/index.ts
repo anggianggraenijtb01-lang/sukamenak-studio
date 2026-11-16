@@ -11,6 +11,7 @@ import { countBlanks, findUnknownPlaceholders } from '../engine/placeholders.js'
 import { corePromptAad, encryptWithCoreKey } from '../lib/coreCipher.js';
 import { hashPassword } from '../lib/password.js';
 import { passwordRules } from '../modules/auth/schemas.js';
+import { isPlaceholderCoreBody } from '../engine/placeholderCorePrompt.js';
 import { SEED_CORE_PROMPTS, type SeedCorePrompt } from './data/corePrompts.js';
 import { SEED_GALLERY } from './data/gallery.js';
 import { SEED_MODELS } from './data/models.js';
@@ -164,10 +165,10 @@ async function seedCorePrompts(client: PoolClient, result: SeedResult): Promise<
     const version = 1;
     const enc = encryptWithCoreKey(core.body, corePromptAad(core.key, version));
     const r = await client.query(
-      `INSERT INTO core_prompts (key, version, subject, publication, body_ciphertext, body_iv, body_auth_tag, blank_count, is_active)
-       SELECT $1, $2, $3, $4, $5, $6, $7, $8, true
+      `INSERT INTO core_prompts (key, version, subject, publication, body_ciphertext, body_iv, body_auth_tag, blank_count, is_active, is_placeholder)
+       SELECT $1, $2, $3, $4, $5, $6, $7, $8, true, $9::boolean
         WHERE NOT EXISTS (SELECT 1 FROM core_prompts WHERE key = $1)`,
-      [core.key, version, core.subject, core.publication, enc.ciphertext, enc.iv, enc.authTag, core.blankKeys.length],
+      [core.key, version, core.subject, core.publication, enc.ciphertext, enc.iv, enc.authTag, core.blankKeys.length, isPlaceholderCoreBody(core.body)],
     );
     result.created.core_prompts = (result.created.core_prompts ?? 0) + (r.rowCount ?? 0);
   }
