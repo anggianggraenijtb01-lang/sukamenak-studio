@@ -4,6 +4,7 @@ import { cleanValue, composePromptDetailed, type ComposeSlot } from '../../../en
 import { BLANK_TOKEN, countBlanks, findUnknownPlaceholders, NAMED_PLACEHOLDERS } from '../../../engine/placeholders.js';
 import { containsForbiddenWords, FORBIDDEN_PROMPT_WORDS } from '../../../engine/policy.js';
 import { sanitizeRemark } from '../../../engine/sanitizeRemark.js';
+import { isPlaceholderCoreBody } from '../../../engine/placeholderCorePrompt.js';
 import { corePromptAad, decryptWithCoreKey, encryptWithCoreKey } from '../../../lib/coreCipher.js';
 import { AppError, notFound } from '../../../lib/errors.js';
 import { loadBrand, loadTemplateData } from '../../../pipeline/context.js';
@@ -108,9 +109,9 @@ export async function createCorePrompt(ctx: AdminCtx, input: CreateCorePromptInp
     const version = (latest?.version ?? 0) + 1;
     const enc = encryptWithCoreKey(input.body.replace(/\r\n?/g, '\n'), corePromptAad(input.key, version));
     const row = await queryOne<{ id: string }>(
-      `INSERT INTO core_prompts (key, version, subject, publication, body_ciphertext, body_iv, body_auth_tag, blank_count, is_active, created_by, updated_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, $9, $9) RETURNING id`,
-      [input.key, version, input.subject, input.publication, enc.ciphertext, enc.iv, enc.authTag, blankCount, ctx.actorId],
+      `INSERT INTO core_prompts (key, version, subject, publication, body_ciphertext, body_iv, body_auth_tag, blank_count, is_active, created_by, updated_by, is_placeholder)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, $9, $9, $10) RETURNING id`,
+      [input.key, version, input.subject, input.publication, enc.ciphertext, enc.iv, enc.authTag, blankCount, ctx.actorId, isPlaceholderCoreBody(input.body)],
       client,
     );
     const created = (row as { id: string }).id;

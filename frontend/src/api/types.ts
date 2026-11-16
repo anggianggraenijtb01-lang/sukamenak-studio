@@ -638,6 +638,8 @@ export interface CorePromptMeta {
   publication: TemplateCategory;
   blank_count: number;
   is_active: boolean;
+  /** Still the neutral stand-in the seed installs (the repository is public), not a real prompt. Never the text itself. */
+  is_placeholder: boolean;
   templates_using: number;
   created_at: IsoDateTime;
   created_by: { id: Uuid; name: string } | null;
@@ -1092,6 +1094,11 @@ export interface AdminDashboard {
     published_tutorials: number;
     active_admins: number;
     active_creators: number;
+  };
+  core_prompts: {
+    active_count: number;
+    /** Keys whose active prompt is still a stand-in: production refuses to generate from these. */
+    placeholder_active_keys: string[];
   };
 }
 
