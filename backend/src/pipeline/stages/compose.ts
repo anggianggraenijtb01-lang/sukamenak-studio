@@ -1,4 +1,6 @@
+import { env } from '../../config/env.js';
 import { query, queryOne } from '../../db/pool.js';
+import { assertCoreBodyUsable } from '../../engine/placeholderCorePrompt.js';
 import { composePromptDetailed } from '../../engine/promptComposer.js';
 import { corePromptAad, decryptWithCoreKey, encryptWithCoreKey, finalPromptAad } from '../../lib/coreCipher.js';
 import { AppError } from '../../lib/errors.js';
@@ -27,6 +29,9 @@ export async function runCompose(ctx: PipelineContext, analysis: Record<string, 
     { ciphertext: row.body_ciphertext, iv: row.body_iv, authTag: row.body_auth_tag },
     corePromptAad(ctx.template.core_prompt_key, row.version),
   );
+
+  // The active core prompt can still be the committed stand-in; production refuses to generate from it.
+  assertCoreBodyUsable(coreBody, env.NODE_ENV);
 
   const { prompt } = composePromptDetailed({
     coreBody,

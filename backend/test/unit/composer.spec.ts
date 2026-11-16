@@ -157,7 +157,8 @@ describe('composePrompt', () => {
     });
     expect(out.prompt).toContain('Colour palette: warna biru laut,');
     expect(out.prompt).toContain('Lighting: cahaya lembut dari samping.');
-    expect(out.prompt).toContain('Additional art direction: kemasan higienis dan ramah.');
+    // Match the blank's content, not the core prompt's wording: the real prompts differ from the committed stand-ins.
+    expect(out.prompt).toMatch(/direction: kemasan higienis dan ramah\./);
     expect(out.sources.color).toBe('remarks');
     expect(out.sources.lighting).toBe('remarks');
     expect(out.sources.remarks).toBe('remarks');

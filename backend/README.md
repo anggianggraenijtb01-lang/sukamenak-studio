@@ -109,6 +109,27 @@ family on Linux/Docker), and every text render also passes the font file explici
 because libvips on Windows ignores fontconfig and silently falls back to a system serif font. Deploy `assets/`
 next to `dist/` (the fonts are resolved relative to the compiled files).
 
+## Core prompts: stand-ins in the repository, real ones in the database
+
+This repository is **public**, so the real core prompts are never committed. `src/seed/data/corePrompts.ts` holds only the
+public structure (key, subject, publication, blank order) and neutral **stand-in** bodies that start with
+`PLACEHOLDER-CORE-PROMPT` (`src/engine/placeholderCorePrompt.ts`). `npm run seed` installs the stand-ins as version 1.
+
+To go live, enter the real prompts in the admin **Core Prompt Manager** (`POST /api/v1/admin/core-prompts`, write-only) and
+activate them as a new version. They are stored AES-256-GCM encrypted in the database and exist nowhere else: no file, no
+environment variable, no commit. Keep the original text in the team's private store, not in this repository.
+
+**Checking it as an admin.** Every `CorePromptMeta` carries `is_placeholder` (a flag, never any text), and
+`GET /admin/dashboard` answers `core_prompts.placeholder_active_keys`: the keys whose active version is still a stand-in. The
+flag is computed once, when the version is written, so reading it never decrypts anything. The admin UI shows a warning banner
+on the dashboard and on Core Prompt Manager, and a "Pengganti" badge on each stand-in version. An empty list means every active
+prompt is a real one. In `NODE_ENV=production` a generation from a stand-in fails with `CORE_PROMPT_REQUIRED` (422) and does
+not use up the creator's allowance.
+
+`test/unit/seedData.spec.ts` fails when a committed body does not carry the marker, so pasting a real prompt into
+`corePrompts.ts` turns CI red before it can be merged. The leak specs scan for the stand-in text; the code paths they
+exercise are the same ones that protect the real prompts.
+
 ## Providers
 
 `src/providers/`: `mock` (default, key-less), `openaiCompat` (chat-completions vision/text,

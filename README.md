@@ -75,6 +75,10 @@ Git Bash; details in [`backend/README.md`](backend/README.md#ci).
 - `backend/test/security/frontend-source-leak.spec.ts` does the same for `frontend/src`.
 - `backend/test/security/rbac.spec.ts` calls every admin route as anonymous, as a creator and as a deactivated admin.
 - Never commit secrets. `.env` is ignored; the values in `ci.yml` and `docker-compose.yml` are throwaway.
+- **The real core prompts are not in this repository.** It is public, so `backend/src/seed/data/corePrompts.ts` holds only
+  neutral stand-ins (marked `PLACEHOLDER-CORE-PROMPT`). Enter the real prompts in the admin Core Prompt Manager; they live
+  only, encrypted, in the database. A test fails if a committed prompt is not a stand-in. See
+  [`backend/README.md`](backend/README.md#core-prompts-stand-ins-in-the-repository-real-ones-in-the-database).
 
 ## CI
 
