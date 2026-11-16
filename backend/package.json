@@ -18,6 +18,7 @@
     "test": "vitest run",
     "test:unit": "vitest run -c vitest.unit.config.ts",
     "test:coverage": "vitest run --coverage",
+    "test:ci": "vitest run --coverage --reporter=default --reporter=json --outputFile=test-results.json && node scripts/assertNoSkips.mjs test-results.json",
     "migrate": "tsx src/db/migrate.ts up",
     "migrate:down": "tsx src/db/migrate.ts down",
     "seed": "tsx src/seed/index.ts",

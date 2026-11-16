@@ -3,4 +3,5 @@ dist
 /storage
 .env
 coverage
+test-results.json
 *.log
