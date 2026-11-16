@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { isPlaceholderCoreBody } from '../../src/engine/placeholderCorePrompt.js';
 import { containsForbiddenWords } from '../../src/engine/policy.js';
 import { countBlanks, findUnknownPlaceholders } from '../../src/engine/placeholders.js';
 import { SEED_CORE_PROMPTS } from '../../src/seed/data/corePrompts.js';
@@ -21,6 +22,17 @@ describe('seed data invariants', () => {
     expect(core.body).toContain('{{subject_lock}}');
     expect(core.body).toContain('{{negative}}');
     expect(core.body).toContain('{{aspect_ratio}}');
+  });
+
+  // The repository is public: a real core prompt must never be committed. Every committed body has to be a stand-in,
+  // so pasting a real prompt into src/seed/data/corePrompts.ts turns this test (and CI) red before it can be merged.
+  it.each(SEED_CORE_PROMPTS.map((c) => [c.key, c] as const))('core prompt %s is a stand-in, not a real prompt', (_key, core) => {
+    expect(isPlaceholderCoreBody(core.body)).toBe(true);
+  });
+
+  it('recognises a stand-in by its marker and nothing else', () => {
+    expect(isPlaceholderCoreBody('PLACEHOLDER-CORE-PROMPT for x')).toBe(true);
+    expect(isPlaceholderCoreBody('A real prompt with [___] and {{aspect_ratio}}.')).toBe(false);
   });
 
   it('defines the 10 PRD templates with unique slugs', () => {
