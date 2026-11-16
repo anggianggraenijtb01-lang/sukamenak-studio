@@ -1,35 +1,61 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Lock, ArrowRight, Eye, EyeOff, User } from 'lucide-react';
-import { useStudio } from '../../components/common/StudioContext';
+import { Link, Navigate, useLocation } from 'react-router-dom';
+import { Lock, ArrowRight, Eye, EyeOff, User, Loader2 } from 'lucide-react';
+import { useAuth, homePathForRole } from '../../auth/AuthProvider';
+import { getErrorMessage, isApiError } from '../../api/errors';
+import type { Role } from '../../api/types';
+import { Modal } from '../../components/creator/Modal';
+
+/** Where to go after signing in: the page the visitor came from, if their role may open it, else their home. */
+function pickRedirect(from: unknown, role: Role): string {
+  const path =
+    typeof from === 'object' && from !== null && typeof (from as { pathname?: unknown }).pathname === 'string'
+      ? ((from as { pathname: string; search?: string; hash?: string }).pathname +
+          ((from as { search?: string }).search ?? '') +
+          ((from as { hash?: string }).hash ?? ''))
+      : null;
+  if (!path || path === '/login' || path === '/register' || !path.startsWith('/')) return homePathForRole(role);
+  if (path.startsWith('/admin') && role !== 'admin') return homePathForRole(role);
+  return path;
+}
 
 export const Login: React.FC = () => {
-  const navigate = useNavigate();
-  const { adminLogin } = useStudio();
+  const { user, status, login, sessionNotice, clearSessionNotice } = useAuth();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Already signed in (or just signed in): go to the page asked for, or to the role's home.
+  if (status === 'authenticated' && user) {
+    return <Navigate to={pickRedirect((location.state as { from?: unknown } | null)?.from, user.role)} replace />;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     setErrorMsg('');
+    clearSessionNotice();
 
-    // Single unified entry: automatically detect admin credentials or normal citizens
-    if (email.includes('admin') || email.includes('operator')) {
-      const success = adminLogin(email, password);
-      if (success) {
-        navigate('/admin/dashboard');
-        return;
-      } else {
-        setErrorMsg('Kredensial operator admin tidak cocok. Silakan periksa kembali.');
-        return;
-      }
+    const local: Record<string, string> = {};
+    if (!email.trim()) local.email = 'Wajib diisi';
+    if (!password) local.password = 'Wajib diisi';
+    setFieldErrors(local);
+    if (Object.keys(local).length > 0) return;
+
+    setSubmitting(true);
+    try {
+      // One form serves both roles; the server decides the role and the redirect follows it.
+      await login(email.trim(), password);
+    } catch (err) {
+      if (isApiError(err) && err.errors.length > 0) setFieldErrors(err.fieldErrors);
+      setErrorMsg(getErrorMessage(err));
+      setSubmitting(false);
     }
-
-    // Default: Citizen & UMKM Creator Workspace
-    navigate('/creator/studio');
   };
 
   return (
@@ -106,7 +132,7 @@ export const Login: React.FC = () => {
           </div>
 
           {/* Form Utama */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             
             {/* Input 1: Email */}
             <div>
@@ -118,14 +144,16 @@ export const Login: React.FC = () => {
                   <User className="w-4 h-4" />
                 </div>
                 <input
-                  type="text"
+                  type="email"
                   required
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="nama@email.com"
                   className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-full bg-[#F8FAFC] border border-[#CBD5E1] text-xs sm:text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E40AF] focus:border-[#1E40AF] transition-all"
                 />
               </div>
+              {fieldErrors.email && <p className="mt-1 text-[11px] font-semibold text-[#EA580C]">{fieldErrors.email}</p>}
             </div>
 
             {/* Input 2: Kata Sandi */}
@@ -140,6 +168,7 @@ export const Login: React.FC = () => {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Masukkan kata sandi"
@@ -154,45 +183,38 @@ export const Login: React.FC = () => {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {fieldErrors.password && <p className="mt-1 text-[11px] font-semibold text-[#EA580C]">{fieldErrors.password}</p>}
             </div>
 
-            {/* Baris Opsi: Ingat Saya & Lupa Kata Sandi */}
-            <div className="flex items-center justify-between text-xs pt-0.5">
-              <label className="flex items-center gap-2 text-[#475569] font-medium cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded text-[#1E40AF] focus:ring-[#1E40AF] border-[#CBD5E1] accent-[#1E40AF]"
-                />
-                <span>Ingat saya</span>
-              </label>
-              <a
-                href="#bantuan"
-                onClick={(e) => {
-                  e.preventDefault();
-                  alert('Untuk bantuan pemulihan kata sandi warga RW 15, silakan hubungi pengurus sekretariat via WhatsApp: +62 812-3456-7890.');
-                }}
-                className="text-[#1E40AF] hover:underline font-semibold"
+            {/* Lupa Kata Sandi (sesi selalu berlaku 7 hari, jadi tidak ada opsi "Ingat saya") */}
+            <div className="flex items-center justify-end text-xs pt-0.5">
+              <button
+                type="button"
+                onClick={() => setHelpOpen(true)}
+                className="text-[#1E40AF] hover:underline font-semibold cursor-pointer"
               >
                 Lupa kata sandi?
-              </a>
+              </button>
             </div>
 
             {/* Pesan Kesalahan jika ada */}
-            {errorMsg && (
-              <div className="p-3 rounded-xl bg-orange-50 border border-orange-200 text-xs text-[#EA580C] font-semibold">
-                {errorMsg}
+            {(errorMsg || sessionNotice) && (
+              <div
+                role="alert"
+                className="p-3 rounded-xl bg-orange-50 border border-orange-200 text-xs text-[#EA580C] font-semibold"
+              >
+                {errorMsg || sessionNotice}
               </div>
             )}
 
             {/* Tombol Aksi Utama: Masuk ke Studio → */}
             <button
               type="submit"
-              className="w-full py-3.5 rounded-full bg-[#1E40AF] hover:bg-[#1D4ED8] text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-700/25 transition-all hover:shadow-xl hover:shadow-blue-700/35 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+              disabled={submitting}
+              className="w-full py-3.5 rounded-full bg-[#1E40AF] hover:bg-[#1D4ED8] text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-700/25 transition-all hover:shadow-xl hover:shadow-blue-700/35 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer disabled:opacity-70 disabled:pointer-events-none"
             >
-              <span>Masuk ke Studio</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>{submitting ? 'Memproses...' : 'Masuk ke Studio'}</span>
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
             </button>
           </form>
 
@@ -209,6 +231,27 @@ export const Login: React.FC = () => {
         </div>
 
       </div>
+
+      {helpOpen && (
+        <Modal title="Lupa Kata Sandi?" onClose={() => setHelpOpen(false)} widthClass="max-w-md">
+          <p className="text-sm text-slate-600 leading-relaxed">
+            Untuk bantuan pemulihan kata sandi warga RW 15, silakan hubungi pengurus sekretariat via WhatsApp:{' '}
+            <a href="https://wa.me/6281234567890" target="_blank" rel="noopener noreferrer" className="font-bold text-[#1E40AF] hover:underline">
+              +62 812-3456-7890
+            </a>
+            .
+          </p>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setHelpOpen(false)}
+              className="px-5 py-2.5 rounded-xl bg-[#1E40AF] hover:bg-[#1D4ED8] text-white text-xs font-black transition-all cursor-pointer"
+            >
+              Mengerti
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

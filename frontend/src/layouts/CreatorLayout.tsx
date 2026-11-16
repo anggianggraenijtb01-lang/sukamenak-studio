@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth, useMe } from '../auth/AuthProvider';
 import { LogoIcon } from '../components/common/Logo';
 import {
   LayoutGrid,
@@ -19,16 +20,13 @@ import {
 export const CreatorLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const { data: me } = useMe();
+  const usage = me?.usage;
+  const displayName = user?.name ?? '';
+  const initial = displayName.trim().charAt(0).toUpperCase() || '?';
+  const roleLabel = user?.role === 'admin' ? 'Admin Sukamenak' : 'Kreator UMKM Sukamenak';
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [avatarImage, setAvatarImage] = useState<string | null>(() => localStorage.getItem('sukamenak_user_avatar'));
-
-  useEffect(() => {
-    const handleAvatarUpdate = () => {
-      setAvatarImage(localStorage.getItem('sukamenak_user_avatar'));
-    };
-    window.addEventListener('avatarUpdated', handleAvatarUpdate);
-    return () => window.removeEventListener('avatarUpdated', handleAvatarUpdate);
-  }, []);
 
   // 7 Standard Creator Navigation Items with 56px rows
   const creatorMenus = [
@@ -41,8 +39,10 @@ export const CreatorLayout: React.FC = () => {
     { to: '/creator/profile', label: 'Profil Saya', icon: User },
   ];
 
-  const handleLogout = () => {
-    navigate('/login');
+  const handleLogout = async () => {
+    setShowProfileMenu(false);
+    await logout();
+    navigate('/login', { replace: true });
   };
 
   return (
@@ -52,7 +52,7 @@ export const CreatorLayout: React.FC = () => {
           1. GLOBAL TOP NAVBAR (STANDARDIZED MINIMALIST HEADER)
           - Left: Crisp 'Sukamenak Studio' wordmark with geometric Royal Blue glyph emblem.
           - Middle: Wide, clean negative space (Completely empty; strictly NO search bar, NO quota badges).
-          - Right: Sleek elevated profile capsule: "Cantika Anggi" (avatar 'C').
+          - Right: Sleek elevated profile capsule: the signed-in user's name and initial.
       ───────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 bg-white border-b border-[#E2E8F0] px-6 lg:px-8 h-18 flex items-center justify-between shadow-2xs">
         
@@ -71,26 +71,21 @@ export const CreatorLayout: React.FC = () => {
         {/* Middle: Wide Clean Negative Space (Empty, zero clutter) */}
         <div className="flex-1" />
 
-        {/* Right: Sleek elevated profile capsule: Circular light-slate avatar with Royal Blue initial 'C' & "Cantika Anggi" */}
+        {/* Right: Sleek elevated profile capsule: Circular light-slate avatar with Royal Blue initial & the user's name */}
         <div className="relative">
           <button
             type="button"
             onClick={() => setShowProfileMenu(!showProfileMenu)}
+            aria-haspopup="menu"
+            aria-expanded={showProfileMenu}
+            aria-label={`Menu akun ${displayName}`}
             className="flex items-center gap-2.5 pl-2 pr-3.5 py-1.5 rounded-full bg-white border border-[#CBD5E1] hover:border-[#2563EB] shadow-xs hover:shadow-md transition-all cursor-pointer group"
           >
-            {avatarImage ? (
-              <img
-                src={avatarImage}
-                alt="Foto Profil Cantika"
-                className="w-8 h-8 rounded-full object-cover border border-[#BFDBFE]"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] flex items-center justify-center text-xs font-black text-[#2563EB]">
-                C
-              </div>
-            )}
+            <div className="w-8 h-8 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] flex items-center justify-center text-xs font-black text-[#2563EB]" aria-hidden="true">
+              {initial}
+            </div>
             <span className="text-xs sm:text-sm font-bold text-[#0F172A] group-hover:text-[#2563EB] transition-colors">
-              Cantika Anggi
+              {displayName}
             </span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#2563EB] transition-colors" />
           </button>
@@ -99,8 +94,13 @@ export const CreatorLayout: React.FC = () => {
           {showProfileMenu && (
             <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl border border-slate-200 shadow-2xl p-2 z-50">
               <div className="px-3 py-2 border-b border-slate-100 mb-1">
-                <div className="text-xs font-black text-[#0F172A]">Cantika Anggi</div>
-                <div className="text-[11px] text-[#64748B]">Kreator UMKM Sukamenak</div>
+                <div className="text-xs font-black text-[#0F172A]">{displayName}</div>
+                <div className="text-[11px] text-[#64748B]">{roleLabel}</div>
+                {usage && (
+                  <div className="text-[11px] text-[#64748B] mt-1">
+                    Sisa kuota hari ini: <span className="font-bold text-[#2563EB]">{usage.remaining_today}</span> / {usage.daily_limit}
+                  </div>
+                )}
               </div>
               <Link
                 to="/creator/profile"
@@ -278,8 +278,16 @@ export const CreatorLayout: React.FC = () => {
           </div>
 
           {/* Bottom Copyright Divider */}
-          <div className="text-center text-xs text-slate-400 font-normal">
-            &copy; 2026 Sukamenak Studio. Bebas Biaya untuk Kemajuan Bersama.
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 font-normal">
+            <span>&copy; 2026 Sukamenak Studio. Bebas Biaya untuk Kemajuan Bersama.</span>
+            <nav aria-label="Informasi hukum" className="flex items-center gap-4">
+              <Link to="/privasi" className="hover:text-white transition-colors">
+                Kebijakan Privasi
+              </Link>
+              <Link to="/syarat" className="hover:text-white transition-colors">
+                Syarat Layanan
+              </Link>
+            </nav>
           </div>
         </div>
       </footer>

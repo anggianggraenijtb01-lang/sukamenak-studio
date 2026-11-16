@@ -2,8 +2,10 @@ import React from 'react';
 import { Link, Outlet } from 'react-router-dom';
 import { MessageCircle, Mail, Instagram } from 'lucide-react';
 import { LogoIcon } from '../components/common/Logo';
+import { homePathForRole, useAuth } from '../auth/AuthProvider';
 
 export const PublicLayout: React.FC = () => {
+  const { user, status } = useAuth();
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     if (window.location.pathname === '/') {
       e.preventDefault();
@@ -71,12 +73,21 @@ export const PublicLayout: React.FC = () => {
 
           {/* Di ujung kanan: Tombol Masuk (#2563EB) */}
           <div className="flex items-center gap-3">
-            <Link
-              to="/login"
-              className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-[#2563EB] hover:bg-[#1D4ED8] shadow-sm transition-all"
-            >
-              Masuk
-            </Link>
+            {status === 'authenticated' && user ? (
+              <Link
+                to={homePathForRole(user.role)}
+                className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-[#2563EB] hover:bg-[#1D4ED8] shadow-sm transition-all"
+              >
+                Buka Studio
+              </Link>
+            ) : (
+              <Link
+                to="/login"
+                className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-[#2563EB] hover:bg-[#1D4ED8] shadow-sm transition-all"
+              >
+                Masuk
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -138,9 +149,13 @@ export const PublicLayout: React.FC = () => {
                   </a>
                 </li>
                 <li>
-                  <Link to="/creator/gallery" className="hover:text-white transition-colors">
+                  <a
+                    href="/#katalog-contoh"
+                    onClick={(e) => handleNavClick(e, 'katalog-contoh')}
+                    className="hover:text-white transition-colors cursor-pointer"
+                  >
                     Galeri Template
-                  </Link>
+                  </a>
                 </li>
                 <li>
                   <a
@@ -152,9 +167,13 @@ export const PublicLayout: React.FC = () => {
                   </a>
                 </li>
                 <li>
-                  <Link to="/creator/tutorials" className="hover:text-white transition-colors">
+                  <a
+                    href="/#cara-kerja"
+                    onClick={(e) => handleNavClick(e, 'cara-kerja')}
+                    className="hover:text-white transition-colors cursor-pointer"
+                  >
                     Panduan
-                  </Link>
+                  </a>
                 </li>
               </ul>
             </div>
@@ -195,8 +214,16 @@ export const PublicLayout: React.FC = () => {
           </div>
 
           {/* Bottom Copyright Divider */}
-          <div className="text-center text-xs text-slate-400 font-normal">
-            &copy; 2026 Sukamenak Studio. Bebas Biaya untuk Kemajuan Bersama.
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 font-normal">
+            <span>&copy; 2026 Sukamenak Studio. Bebas Biaya untuk Kemajuan Bersama.</span>
+            <nav aria-label="Informasi hukum" className="flex items-center gap-4">
+              <Link to="/privasi" className="hover:text-white transition-colors">
+                Kebijakan Privasi
+              </Link>
+              <Link to="/syarat" className="hover:text-white transition-colors">
+                Syarat Layanan
+              </Link>
+            </nav>
           </div>
         </div>
       </footer>
