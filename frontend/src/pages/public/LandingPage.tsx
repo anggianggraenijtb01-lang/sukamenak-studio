@@ -31,6 +31,7 @@ import {
   Globe,
 } from 'lucide-react';
 import { getFeatureSvg, getLightFeatureIllustration } from '../../services/posterGraphics';
+import { useCopy } from '../../components/creator/clipboard';
 
 /* ─── Koleksi Template Poster Lokal Siap Pakai (Style Referensi Modern Prompt) ─── */
 const TEMPLATES_SHOWCASE = [
@@ -122,6 +123,7 @@ const FAQS = [
 ];
 
 export const LandingPage: React.FC = () => {
+  const { copiedKey, copy } = useCopy();
   const [openFaq, setOpenFaq] = useState<string | null>('f1');
   const [activeFaqCategory, setActiveFaqCategory] = useState<string>('Semua');
   const cardScrollRef = React.useRef<HTMLDivElement>(null);
@@ -569,32 +571,22 @@ export const LandingPage: React.FC = () => {
                     <div className="flex items-center gap-4">
                       <button
                         type="button"
-                        onClick={() => {
-                          if (navigator.clipboard) {
-                            navigator.clipboard.writeText(tpl.desc);
-                            alert(`Prompt "${tpl.title}" berhasil disalin!`);
-                          }
-                        }}
+                        onClick={() => void copy(`desc-${tpl.id}`, tpl.desc)}
                         className="inline-flex items-center gap-1.5 text-[#1E40AF] hover:text-[#1E3A8A] transition-colors font-bold cursor-pointer"
                         title="Salin deskripsi prompt"
                       >
                         <Copy className="w-3.5 h-3.5 text-[#1E40AF]" />
-                        <span>Copy</span>
+                        <span>{copiedKey === `desc-${tpl.id}` ? 'Tersalin!' : 'Copy'}</span>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => {
-                          if (navigator.clipboard) {
-                            navigator.clipboard.writeText(window.location.origin + '/creator/studio');
-                            alert('Tautan berhasil disalin!');
-                          }
-                        }}
+                        onClick={() => void copy(`link-${tpl.id}`, window.location.origin + '/creator/studio')}
                         className="inline-flex items-center gap-1.5 text-slate-600 hover:text-[#1E40AF] transition-colors cursor-pointer"
                         title="Bagikan tautan template"
                       >
                         <Share2 className="w-3.5 h-3.5 text-slate-400 hover:text-[#1E40AF]" />
-                        <span>Share</span>
+                        <span>{copiedKey === `link-${tpl.id}` ? 'Tautan tersalin!' : 'Share'}</span>
                       </button>
                     </div>
                   </div>
