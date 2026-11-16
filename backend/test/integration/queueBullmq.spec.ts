@@ -9,6 +9,7 @@ import { createBullmqQueue, createGenerationWorker } from '../../src/queue/bullm
 import { setQueue } from '../../src/queue/index.js';
 import { api, bearer, pool, registerUser, useDatabase } from '../helpers/api.js';
 import { eventsOf, postGeneration, successCountToday } from '../helpers/pipeline.js';
+import { requireDependency } from '../helpers/requirements.js';
 
 useDatabase();
 
@@ -26,8 +27,8 @@ async function redisReachable(): Promise<boolean> {
   }
 }
 
-const up = await redisReachable();
-if (!up) process.stderr.write('[queueBullmq.spec] Redis is not reachable: bullmq smoke tests are skipped\n');
+// Fails the file when Redis is down (see helpers/requirements.ts); only TEST_ALLOW_SKIP=1 turns that into a loud skip.
+const up = requireDependency(await redisReachable(), `Redis at ${env.REDIS_URL}`, 'Start it with "docker compose up -d redis".');
 
 async function waitForStatus(token: string, id: string, done: string[], timeoutMs = 25_000) {
   const started = Date.now();

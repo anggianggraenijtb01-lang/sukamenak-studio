@@ -12,6 +12,7 @@ import {
   AES_KEY_MARKER, BUNDLE_WINDOW, FORBIDDEN_TOKENS, FRONTEND_MOCK_PROMPT_LINES, encodingsOf, findWindow, leakProblems, seededCoreBodies, windowsOf, type LeakCorpus,
 } from '../helpers/leak.js';
 import { createReferenceId, download, postGeneration, settle } from '../helpers/pipeline.js';
+import { requireDependency } from '../helpers/requirements.js';
 import { collectApiRoutes } from '../helpers/routes.js';
 import { testEnv } from '../helpers/testEnv.js';
 
@@ -378,14 +379,16 @@ describe('prompt-leak: logs', () => {
 // --- built frontend bundle ------------------------------------------------------------------
 
 const distFiles = existsSync(FRONTEND_DIST_ASSETS) ? readdirSync(FRONTEND_DIST_ASSETS).filter((f) => f.endsWith('.js')) : [];
-const SKIP_REASON = `SKIPPED: ${FRONTEND_DIST_ASSETS} not found or has no .js files. Run "npm ci && npm run build" in frontend/ to enable this check.`;
 
 describe('prompt-leak: built frontend bundle', () => {
   it('frontend/dist/assets/*.js contains no core prompt text and no AES key', (ctx) => {
-    if (distFiles.length === 0) {
-      console.warn(SKIP_REASON);
-      ctx.skip(SKIP_REASON);
-    }
+    // A missing build FAILS this test; only TEST_ALLOW_SKIP=1 turns it into a loud skip (see helpers/requirements.ts).
+    const built = requireDependency(
+      distFiles.length > 0,
+      `A built frontend (${FRONTEND_DIST_ASSETS} has no .js files)`,
+      'Run "npm ci && npm run build" in frontend/ first.',
+    );
+    if (!built) return ctx.skip();
     const windows = windowsOf([...seededCoreBodies(), ...customBodies], BUNDLE_WINDOW);
     const offenders: string[] = [];
     for (const file of distFiles) {

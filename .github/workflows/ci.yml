@@ -1,12 +1,17 @@
 name: CI
 
 on:
+  # Every branch push runs CI, so a working branch gets a signal before anyone opens a PR (a rule that only
+  # reproduces from a clean checkout, such as an over-eager .gitignore, showed up late for exactly that reason).
   push:
-    branches: [main]
+    branches: ['**']
   pull_request:
+    branches: [main]
 
+# A branch push and its pull request share one group: the newer run cancels the older one, so a PR branch is
+# tested once per commit instead of twice.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 permissions:
@@ -57,8 +62,6 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
-      # MinIO is deliberately NOT started here: test/integration/storageS3.spec.ts probes the endpoint and skips itself
-      # when it is unreachable. To run it in CI, add a minio service plus a `mc mb` step and set S3_* variables.
     steps:
       - uses: actions/checkout@v4
 
@@ -66,9 +69,34 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
 
       - run: npm ci
+
+      # MinIO cannot be a `services:` container (it needs a start command), so it runs as a plain container.
+      # test/integration/storageS3.spec.ts talks to localhost:9000, bucket "sukamenak", minioadmin/minioadmin.
+      # Same image as docker-compose.yml (minio/minio is no longer pullable).
+      - name: Start MinIO and create the bucket
+        run: |
+          docker run -d --name minio --user 0:0 -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+            cgr.dev/chainguard/minio:latest server /data
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:9000/minio/health/live > /dev/null && break
+            sleep 2
+          done
+          curl -sf http://localhost:9000/minio/health/live > /dev/null || { docker logs minio; exit 1; }
+          AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin AWS_DEFAULT_REGION=us-east-1 \
+            aws --endpoint-url http://localhost:9000 s3api create-bucket --bucket sukamenak
+
+      # test/security/prompt-leak.spec.ts scans frontend/dist/assets/*.js; without a build that test fails on purpose.
+      - name: Build the frontend (the bundle leak scan needs it)
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
 
       - name: Typecheck
         run: npm run typecheck
@@ -77,8 +105,10 @@ jobs:
         run: npm run migrate
 
       # Global setup creates and migrates sukamenak_test, truncates it and seeds it before the first spec.
-      - name: Test with coverage (unit + integration + security; threshold 70% lines)
-        run: npm run test:coverage
+      # test:ci also fails the run when ANY test was skipped or is a todo (scripts/assertNoSkips.mjs); a missing
+      # Redis, MinIO or frontend build already fails the spec itself because CI never sets TEST_ALLOW_SKIP.
+      - name: Test with coverage (unit + integration + security; threshold 70% lines; no skipped tests)
+        run: npm run test:ci
 
       - name: Build
         run: npm run build
@@ -88,7 +118,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: backend-coverage
-          path: backend/coverage
+          path: |
+            backend/coverage
+            backend/test-results.json
           if-no-files-found: ignore
 
   frontend:
@@ -177,6 +209,4 @@ jobs:
 
       - name: Frontend source scan
         working-directory: backend
-        env:
-          CHECK_FRONTEND_SOURCE: '1'
         run: npx vitest run test/security/frontend-source-leak.spec.ts
