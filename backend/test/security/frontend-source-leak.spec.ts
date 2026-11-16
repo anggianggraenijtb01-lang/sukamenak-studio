@@ -5,11 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { AES_KEY_MARKER, BUNDLE_WINDOW, FRONTEND_MOCK_PROMPT_LINES, findWindow, seededCoreBodies, windowsOf } from '../helpers/leak.js';
 
 /**
- * Scans the frontend SOURCE for core prompt text and the old AES key. Disabled by default because the frontend still
- * ships a leaked mock core prompt and key (Phase D removes them). Enable with CHECK_FRONTEND_SOURCE=1; then it must pass.
- * Offenders are reported as file + kind only, never with the matched text.
+ * Scans the frontend SOURCE for core prompt text and the old AES key. Always on: since phase D the frontend ships
+ * neither, so a hit here is a regression. Offenders are reported as file + kind only, never with the matched text.
  */
-const ENABLED = process.env.CHECK_FRONTEND_SOURCE === '1';
 const FRONTEND_SRC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../frontend/src');
 const EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json', '.css', '.html']);
 
@@ -23,7 +21,7 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-describe.skipIf(!ENABLED)('frontend source contains no core prompt or encryption key (CHECK_FRONTEND_SOURCE=1)', () => {
+describe('frontend source contains no core prompt or encryption key', () => {
   it('frontend/src is clean', () => {
     expect(existsSync(FRONTEND_SRC), `${FRONTEND_SRC} must exist`).toBe(true);
     const windows = windowsOf(seededCoreBodies(), BUNDLE_WINDOW);

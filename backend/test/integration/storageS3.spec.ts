@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { createS3Storage, type S3StorageConfig } from '../../src/storage/s3.js';
+import { requireDependency } from '../helpers/requirements.js';
 
-// MinIO from docker-compose (throwaway dev credentials). Skipped when it is not reachable.
+// MinIO from docker-compose (throwaway dev credentials). The file fails when it is not reachable.
 const config: S3StorageConfig = {
   endpoint: process.env.TEST_S3_ENDPOINT ?? 'http://localhost:9000',
   region: 'us-east-1',
@@ -24,8 +25,11 @@ async function minioReady(): Promise<boolean> {
   }
 }
 
-const ready = await minioReady();
-if (!ready) process.stderr.write('[storageS3.spec] MinIO/bucket not reachable: s3 driver tests are skipped\n');
+const ready = requireDependency(
+  await minioReady(),
+  `MinIO bucket "${config.bucket}" at ${config.endpoint}`,
+  'Start it with "docker compose up -d minio minio-init" (minio-init creates the bucket).',
+);
 
 describe.skipIf(!ready)('s3 storage driver against MinIO', () => {
   it('puts, gets, streams, serves through a presigned URL, and deletes', async () => {

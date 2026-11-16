@@ -6,8 +6,8 @@ log line, error message or file contains it). Spec: [`../docs/BACKEND_PLAN.md`](
 
 Status: Phase A (foundation, auth, prompt engine, catalog), Phase B (storage, references, providers, queue,
 generation pipeline, generations API, retention) and Phase C (admin API, audit, dashboard, security specs, CI) are
-implemented. Phase D (frontend integration, removing the leaked mock core prompt from `frontend/`) is the frontend lane.
-The complete endpoint reference for the frontend team is [`docs/API.md`](docs/API.md).
+implemented, and so is Phase D (the frontend now runs on this API; the leaked mock core prompt and AES key are gone from
+`frontend/`). The complete endpoint reference for the frontend team is [`docs/API.md`](docs/API.md).
 
 ## Setup
 
@@ -41,8 +41,8 @@ the application then pastes the slot text into those zones.
 ### Scripts
 
 `dev`, `build`, `start`, `worker`, `start:worker`, `typecheck`, `test`, `test:unit` (no database), `test:coverage`
-(full suite with v8 coverage and a 70% line threshold), `migrate`, `migrate:down`, `seed`, `create-admin`,
-`retention` (one retention pass).
+(full suite with v8 coverage and a 70% line threshold), `test:ci` (what CI runs: `test:coverage` plus a check that no test
+was skipped), `migrate`, `migrate:down`, `seed`, `create-admin`, `retention` (one retention pass).
 
 ### Configuration
 
@@ -180,9 +180,8 @@ Migration `1794000000008_admin_hardening.sql` adds `generations.flagged_at|flagg
   `final_prompt`, `auth_tag`, or any hex/base64 form of the stored ciphertext, IVs, tags or key material. Phrases that are already
   public (slot options, tutorials, the creator's own text) are excluded so coincidences cannot trip it. It carries a positive
   control. It also scans `frontend/dist/assets/*.js` for the old AES key string, the leaked mock prompt and 40-character runs of the
-  seeded prompts, **only if that directory exists** (otherwise the test is skipped with a message naming the reason).
-- `frontend-source-leak.spec.ts` scans `frontend/src` for the same markers. Skipped unless `CHECK_FRONTEND_SOURCE=1`; today it
-  fails on `frontend/src/services/aesEncryption.ts` (hard-coded AES key and a mock core prompt), which Phase D removes.
+  seeded prompts. The bundle must exist: **without a build this test fails** (run `npm ci && npm run build` in `frontend/`).
+- `frontend-source-leak.spec.ts` scans `frontend/src` for the same markers. Always on; since Phase D it passes, so a hit is a regression.
 
 Admin specs (`test/integration/admin*.spec.ts`) restore the test database to its seeded state when they finish
 (`useSeededDatabase`), so they do not disturb the Phase A/B specs.
@@ -191,36 +190,53 @@ Admin specs (`test/integration/admin*.spec.ts`) restore the test database to its
 
 `.github/workflows/ci.yml` (at the repository root):
 
-- job **backend**: Node 22, services `postgres:16` and `redis:7` with health checks, then `npm ci`, `typecheck`, `migrate`,
-  `npm run test:coverage` (unit + integration + security, 70% line threshold) and `build`. MinIO is not started: the s3 driver spec
-  probes `localhost:9000` and **skips itself** when it is unreachable (add a MinIO service and the `S3_*` variables to run it).
-- job **prompt-leak-bundle**: builds `frontend/` and runs `prompt-leak.spec.ts` against `frontend/dist`. It is
-  `continue-on-error: true` until Phase D removes the leaked mock prompt and key from the frontend; then remove that flag to make it blocking.
+It runs on every branch push and on pull requests to `main` (a push and its PR share one concurrency group, so a commit is
+tested once).
 
-Run the backend job locally (needs the docker-compose stack):
+- job **backend**: Node 22, services `postgres:16` and `redis:7` with health checks, a MinIO container (same image as
+  `docker-compose.yml`, bucket `sukamenak`) and a build of `frontend/`, then `npm ci`, `typecheck`, `migrate`,
+  `npm run test:ci` (unit + integration + security, 70% line threshold, **fails if any test is skipped or todo**) and `build`.
+- job **prompt-leak-bundle**: builds `frontend/` and runs `prompt-leak.spec.ts` against `frontend/dist`, plus the frontend
+  source scan. Blocking since Phase D.
+- job **frontend**: `typecheck`, `npm test`, `build`.
+
+### No silent skips
+
+A test that needs Redis, MinIO or a built frontend **fails** when that dependency is missing, and the message says how to
+start it (`test/helpers/requirements.ts`). A developer without Docker or without a frontend build can opt out on purpose
+with `TEST_ALLOW_SKIP=1`; every skip is then printed as `!! SKIPPED ON PURPOSE`. CI never sets the flag, and
+`scripts/assertNoSkips.mjs` fails the run when the Vitest report holds any skipped or todo test.
+
+Run the backend job locally (needs the docker-compose stack, MinIO included, and a frontend build):
 
 ```bash
-docker compose up -d                 # repository root
-cd backend && npm ci
+docker compose up -d                 # repository root: postgres, redis, minio and the bucket
+(cd ../frontend && npm ci && npm run build)
+npm ci
 npm run typecheck && npm run migrate
-npm run test:coverage                # text summary, coverage/ (html + lcov)
+npm run test:ci                      # text summary, coverage/ (html + lcov), test-results.json
 npm run build
 ```
 
-To reproduce the bundle job: `cd frontend && npm install && npm run build`, then in `backend/`
-`npx vitest run test/security/prompt-leak.spec.ts`.
+**Windows:** run the coverage commands from a shell whose current directory uses a capital drive letter (`C:\...`, e.g.
+PowerShell or cmd). From Git Bash (`/c/...`, which resolves to `c:`) v8 lists every file twice, one copy at 0%, and the total
+drops below the threshold although the tests pass. Linux and CI are not affected.
+
+To reproduce the bundle job on its own: `cd frontend && npm ci && npm run build`, then in `backend/`
+`npx vitest run test/security/prompt-leak.spec.ts test/security/frontend-source-leak.spec.ts`.
 
 ## Tests
 
 ```bash
 npm run typecheck
 npm run test:unit    # no database: crypto, composer, sanitizer, providers (mocked fetch), compositor, storage, csv, audit helpers ...
-npm test             # unit + integration + security (needs postgres on DATABASE_URL_TEST; redis/minio tests skip when absent)
+npm test             # unit + integration + security (needs postgres on DATABASE_URL_TEST, redis, minio and a frontend build)
 npm run test:coverage  # the same with v8 coverage; fails below 70% lines
+npm run test:ci      # the same, and fails when any test was skipped (what CI runs)
 npm run build
 ```
 
 Integration tests use `DATABASE_URL_TEST` (the database name must end in `_test`; it is truncated and
 re-seeded on every run), a temp directory for storage, the mock provider and the inline queue. The BullMQ
-smoke test and the s3-driver test talk to the real Redis / MinIO from docker-compose and skip themselves
-when those are unreachable.
+smoke test and the s3-driver test talk to the real Redis / MinIO from docker-compose and fail when those are
+unreachable (see "No silent skips" above).
