@@ -9,9 +9,10 @@ on:
     branches: [main]
 
 # A branch push and its pull request share one group: the newer run cancels the older one, so a PR branch is
-# tested once per commit instead of twice.
+# tested once per commit instead of twice. The head repository is part of the key: this repository is public, and a
+# fork PR from a branch named "main" must not land in the same group as a push to main and cancel its run.
 concurrency:
-  group: ci-${{ github.head_ref || github.ref_name }}
+  group: ci-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 permissions:
