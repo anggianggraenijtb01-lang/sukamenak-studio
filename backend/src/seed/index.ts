@@ -294,6 +294,12 @@ if (isMain) {
     .then((result) => {
       const summary = Object.entries(result.created).map(([k, v]) => `${k}=${v}`).join(', ') || 'nothing new (already seeded)';
       process.stdout.write(`Seed complete: ${summary}\n`);
+      if ((result.created.core_prompts ?? 0) > 0) {
+        process.stdout.write(
+          '\nThe core prompts just installed are neutral STAND-INS (the repository is public). Enter the real prompts in the\n' +
+            'admin Core Prompt Manager and activate them before launch; production refuses to generate with a stand-in.\n',
+        );
+      }
       if (result.generatedPasswords.length > 0) {
         // Printed once to stdout only; deliberately not routed through the logger.
         process.stdout.write('\nGenerated credentials (shown once, store them now):\n');
