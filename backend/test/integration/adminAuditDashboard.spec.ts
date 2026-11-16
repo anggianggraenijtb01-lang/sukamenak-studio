@@ -102,7 +102,13 @@ describe('admin dashboard', () => {
     expect(d.counts.published_templates).toBeGreaterThanOrEqual(10);
     expect(d.counts.published_tutorials).toBeGreaterThanOrEqual(6);
     expect(d.counts.active_admins).toBeGreaterThanOrEqual(2);
-    expect(res.text).not.toMatch(/prompt|remarks|slot_values/);
+    // The dashboard never carries prompt data. The one place the word appears is the stand-in status block, which is
+    // pinned to a count and a list of keys: everything else in the response must stay free of these words.
+    const { core_prompts: status, ...rest } = d;
+    expect(JSON.stringify(rest)).not.toMatch(/prompt|remarks|slot_values/);
+    expect(Object.keys(status).sort()).toEqual(['active_count', 'placeholder_active_keys']);
+    expect(status.active_count).toEqual(expect.any(Number));
+    for (const key of status.placeholder_active_keys) expect(key).toMatch(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/);
 
     for (const bad of ['days=0', 'days=91', 'days=abc']) expect((await as(admin).get(`/dashboard?${bad}`)).status, bad).toBe(400);
     expect((await as(admin).get('/dashboard')).body.data.daily).toHaveLength(30);

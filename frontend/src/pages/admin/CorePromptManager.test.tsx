@@ -14,6 +14,7 @@ const meta = (over: Record<string, unknown> = {}) => ({
   publication: 'poster',
   blank_count: 1,
   is_active: true,
+  is_placeholder: false,
   templates_using: 2,
   created_at: '2026-11-01T03:00:00Z',
   created_by: { id: 'a1', name: 'Admin Utama' },
@@ -133,5 +134,27 @@ describe('CorePromptManager is write-only', () => {
     fireEvent.click(screen.getByRole('button', { name: /Kirim Versi Baru Master Prompt/ }));
     expect((await screen.findAllByText(/minimal satu placeholder/)).length).toBeGreaterThan(0);
     expect(api.calls.some((c) => c.method === 'POST')).toBe(false);
+  });
+});
+
+describe('CorePromptManager tells an admin which active prompts are still stand-ins', () => {
+  it('warns about the keys whose active version is a stand-in and marks that version', async () => {
+    stubApi(listRoutes([meta({ is_placeholder: true }), meta({ id: 'cp-5', key: 'product.psa', publication: 'psa', is_placeholder: false })]));
+    renderWithProviders(<CorePromptManager />);
+    const banner = await screen.findByTestId('stand-in-banner');
+    expect(banner.textContent).toContain('1 core prompt aktif masih berupa prompt pengganti');
+    expect(banner.textContent).toContain('product.poster');
+    expect(banner.textContent).not.toContain('product.psa');
+
+    expect(within(screen.getByTestId('group-product.poster')).getByText('Pengganti')).toBeTruthy();
+    expect(within(screen.getByTestId('group-product.psa')).queryByText('Pengganti')).toBeNull();
+  });
+
+  it('shows no warning once the active version is a real prompt, but still marks the old stand-in in the history', async () => {
+    stubApi(listRoutes([meta({ id: 'cp-2', version: 2, is_placeholder: false }), meta({ id: 'cp-1', version: 1, is_active: false, is_placeholder: true })]));
+    renderWithProviders(<CorePromptManager />);
+    await screen.findByText('v2');
+    expect(screen.queryByTestId('stand-in-banner')).toBeNull();
+    expect(within(screen.getByTestId('group-product.poster')).getAllByText('Pengganti')).toHaveLength(1);
   });
 });

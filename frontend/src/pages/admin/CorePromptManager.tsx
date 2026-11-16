@@ -18,6 +18,7 @@ import type {
 } from '../../api/types';
 import { corePromptErrorMessage, toFormError } from '../../components/admin/adminErrors';
 import { CATEGORY_LABELS, formatDateTime } from '../../components/admin/format';
+import { StandInPromptBanner } from '../../components/admin/StandInPromptBanner';
 import {
   Badge,
   Banner,
@@ -134,6 +135,9 @@ export const CorePromptManager: React.FC = () => {
       />
 
       <NoticeBanner notice={notice} onDismiss={clear} />
+
+      {/* Active prompts that are still the committed stand-in: production refuses to generate from them. */}
+      <StandInPromptBanner keys={groups.filter((g) => g.versions.some((v) => v.is_active && v.is_placeholder)).map((g) => g.key)} />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* ---------------- create a new version ---------------- */}
@@ -268,7 +272,10 @@ export const CorePromptManager: React.FC = () => {
                   {g.versions.map((v) => (
                     <tr key={v.id}>
                       <td className="py-2 px-4 font-mono font-bold">v{v.version}</td>
-                      <td className="py-2 px-4">{v.is_active ? <Badge tone="blue">Aktif</Badge> : <Badge tone="slate">Tidak aktif</Badge>}</td>
+                      <td className="py-2 px-4 space-x-1">
+                        {v.is_active ? <Badge tone="blue">Aktif</Badge> : <Badge tone="slate">Tidak aktif</Badge>}
+                        {v.is_placeholder && <Badge tone="amber">Pengganti</Badge>}
+                      </td>
                       <td className="py-2 px-4 font-mono">{v.blank_count}</td>
                       <td className="py-2 px-4 font-mono">{v.templates_using}</td>
                       <td className="py-2 px-4 text-slate-500">

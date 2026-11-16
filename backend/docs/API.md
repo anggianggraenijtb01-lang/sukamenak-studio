@@ -263,8 +263,14 @@ variable; `api_key_configured` only says whether it is set. A key value is never
 
 ### 3.3 Core prompts (write-only)
 
-`CorePromptMeta`: `{ id, key, version, subject, publication, blank_count, is_active, templates_using, created_at, created_by: { id, name } | null }`.
+`CorePromptMeta`: `{ id, key, version, subject, publication, blank_count, is_active, is_placeholder, templates_using, created_at, created_by: { id, name } | null }`.
 **There is no field for the body, a preview of it, or ciphertext, and there is no endpoint to read one.**
+
+`is_placeholder` is a boolean only: `true` while the version is the neutral stand-in the seed installs (this repository is public, so
+the real prompts are never committed). It is computed once when the version is written, from the body that is in memory at that
+moment, so reading a list never decrypts anything. A version created through `POST /core-prompts` is flagged by the same rule, so
+re-submitting a stand-in body flags it again. In `NODE_ENV=production` a generation whose active prompt is a stand-in fails with
+`CORE_PROMPT_REQUIRED` (422) and does not use up the creator's daily allowance.
 
 | Method and path | Body / query | Response and rules |
 |---|---|---|
@@ -363,9 +369,13 @@ analysis, slot values or remarks, ever.**
               "cost_usd": 0, "avg_duration_ms": null, "active_users": 0 }],
   "models": [{ "capability": "i2i", "active_count": 1,
                "default": { "id": "uuid", "name": "...", "provider": "mock", "model_id": "...", "last_test_at": null, "last_test_ok": null } }],
-  "counts": { "published_templates": 10, "published_tutorials": 6, "active_admins": 2, "active_creators": 1 }
+  "counts": { "published_templates": 10, "published_tutorials": 6, "active_admins": 2, "active_creators": 1 },
+  "core_prompts": { "active_count": 5, "placeholder_active_keys": ["product.poster", "product.psa"] }
 }
 ```
+
+`core_prompts` answers "is the active prompt still a stand-in?": `placeholder_active_keys` lists the keys (never any text) whose active
+version has `is_placeholder = true`. An empty list means every active prompt is a real one. It does not depend on `days`.
 
 `success_rate = done / (done + failed)`; `used_reference_image_rate` is over `done` generations; `degraded_rate` over all;
 `avg_cost_usd` is total cost divided by all generations in the window. Rates are `null` when there is nothing to divide.
