@@ -33,7 +33,7 @@ import { getStorage } from '../storage/index.js';
  */
 
 const IMAGE_EXT = /\.(jpe?g|png|webp)$/i;
-const BENCHMARK_EMAIL = 'benchmark@sukamenak.studio';
+const BENCHMARK_EMAIL_DOMAIN = 'sukamenak.studio';
 const POLL_MS = 1000;
 
 export const SCORE_COLUMNS = ['huruf_rusak', 'manusia_di_mode_product', 'referensi_dipakai', 'skor_1_5', 'catatan'] as const;
@@ -85,6 +85,9 @@ export const fileToken = (s: string): string =>
     .replace(/^-+|-+$/g, '')
     .slice(0, 60) || 'x';
 
+/** The account created by this run, retired on exit whatever happens (see the isMain block). */
+let runUserId: string | undefined;
+
 const stamp = (d = new Date()) => d.toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
 
 interface TemplateTarget {
@@ -94,19 +97,24 @@ interface TemplateTarget {
   slots: SlotDef[];
 }
 
-async function benchmarkUser(): Promise<string> {
-  const existing = await queryOne<{ id: string }>('SELECT id FROM users WHERE email = $1 AND deleted_at IS NULL', [BENCHMARK_EMAIL]);
-  if (existing) {
-    await query('UPDATE users SET is_active = true, daily_limit_override = 100000 WHERE id = $1', [existing.id]);
-    return existing.id;
-  }
-  // A creator account nobody signs in to: the password is random and never printed.
+/**
+ * A fresh creator account for this run only. Never an existing account looked up by email: anyone can register
+ * a fixed address through /auth/register, and reusing it would hand that person a reactivated account with an
+ * unlimited quota. The random suffix cannot be registered in advance; the password is random and never printed.
+ */
+async function createBenchmarkUser(): Promise<string> {
+  const email = `benchmark-${randomBytes(8).toString('hex')}@${BENCHMARK_EMAIL_DOMAIN}`;
   const hash = await hashPassword(randomBytes(32).toString('base64url'));
   const row = await queryOne<{ id: string }>(
     `INSERT INTO users (email, password_hash, name, role, daily_limit_override) VALUES ($1, $2, 'Benchmark (CLI)', 'creator', 100000) RETURNING id`,
-    [BENCHMARK_EMAIL, hash],
+    [email, hash],
   );
   return (row as { id: string }).id;
+}
+
+/** Closes the run's account: no sign-in, no quota. Its generations stay for the audit trail and retention. */
+async function retireBenchmarkUser(userId: string): Promise<void> {
+  await query('UPDATE users SET is_active = false, daily_limit_override = NULL WHERE id = $1', [userId]);
 }
 
 async function adminActor(): Promise<string> {
@@ -236,8 +244,9 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  const userId = await benchmarkUser();
   const actor = { actorId: await adminActor(), ip: null };
+  const userId = await createBenchmarkUser();
+  runUserId = userId;
   const outDir = path.resolve(values.out ?? path.join('benchmark-results', stamp()));
   await mkdir(outDir, { recursive: true });
 
@@ -342,6 +351,7 @@ if (isMain) {
       process.exitCode = 1;
     })
     .finally(async () => {
+      if (runUserId) await retireBenchmarkUser(runUserId).catch(() => process.stderr.write('Could not deactivate the benchmark account; deactivate it in the admin panel.\n'));
       await closeQueue().catch(() => undefined);
       await closePool();
     });
