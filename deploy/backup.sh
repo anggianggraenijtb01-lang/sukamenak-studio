@@ -2,7 +2,10 @@
 # Daily backup of one environment: PostgreSQL (pg_dump custom format) and the file storage volume.
 # Run on the server from this folder, e.g. by cron:  15 2 * * *  /srv/sukamenak/staging/backup.sh
 # CORE_PROMPT_KEY is NOT in these files: keep it separately, or the core prompts cannot be decrypted.
+# The dumps hold user accounts (password hashes, e-mail) and encrypted core prompts: owner-only permissions.
+# Encrypt them before copying them off the server (see deploy/README.md).
 set -euo pipefail
+umask 077
 cd "$(dirname "$0")"
 
 BACKUP_DIR="${BACKUP_DIR:-./backups}"

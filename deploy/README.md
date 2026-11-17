@@ -78,7 +78,9 @@ Container berjalan sebagai user `node` (uid 1000), jadi siapkan foldernya dulu:
 ## Backup dan restore
 
 Cron harian: `15 2 * * * /srv/sukamenak/staging/backup.sh`. Hasilnya `backups/db-*.dump` dan
-`backups/storage-*.tar.gz`, disimpan 14 hari. Salin juga ke luar server.
+`backups/storage-*.tar.gz`, disimpan 14 hari, hanya bisa dibaca pemiliknya (`umask 077`). Isinya data
+pengguna (email, hash password, foto), jadi **enkripsi dulu sebelum disalin ke luar server**, misalnya
+`age -r <public-key> db-<ts>.dump > db-<ts>.dump.age`, dan simpan private key-nya terpisah dari backup.
 
 Restore (latihan wajib sebelum launch, PRD §12):
 
