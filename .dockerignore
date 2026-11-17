@@ -1,0 +1,18 @@
+# Build context is the repository root (both images need files outside their own folder).
+# Keep secrets, local state and host-built artefacts out of every image.
+**/node_modules
+**/dist
+**/coverage
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+**/test-results.json
+backend/storage
+backend/benchmark-results
+deploy/.env
+deploy/backups
+scratch
+.git
+.github
+.claude

@@ -11,9 +11,10 @@ describe('health and meta', () => {
     expect(res.body.data).toMatchObject({ status: 'ok', checks: { database: 'up', redis: 'skipped' } });
   });
 
-  it('GET /meta/version reports name and version only', async () => {
+  it('GET /meta/version reports name, version and the build commit only', async () => {
     const res = await api().get('/api/v1/meta/version');
     expect(res.status).toBe(200);
+    expect(Object.keys(res.body.data).sort()).toEqual(['api', 'commit', 'environment', 'name', 'version']);
     expect(res.body.data).toMatchObject({ name: 'sukamenak-studio-backend', api: 'v1' });
     expect(res.body.data.version).toMatch(/^\d+\.\d+\.\d+/);
   });

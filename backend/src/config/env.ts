@@ -24,6 +24,8 @@ const schema = z
     TRUST_PROXY: intFromString(0),
     APP_TIMEZONE: z.string().min(1).default('Asia/Jakarta'),
     PUBLIC_BASE_URL: optionalString,
+    /** Commit the running build was made from (set by the Docker image); reported by /meta/version for deploy checks. */
+    GIT_SHA: optionalString,
 
     DATABASE_URL: z.string().url(),
     DATABASE_URL_TEST: optionalString,
