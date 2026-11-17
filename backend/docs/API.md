@@ -124,7 +124,7 @@ Legend for **Auth**: none = public, creator = any logged in user (admins include
 | Method and path | Auth | Notes |
 |---|---|---|
 | `GET /health` | none | `data: { status: "ok", uptime_seconds, checks: { database, redis } }` (`redis` is `skipped` unless `QUEUE_DRIVER=bullmq`). 503 with `INTERNAL_ERROR` when a dependency is down. |
-| `GET /meta/version` | none | `data: { name, version, api: "v1", environment }`. |
+| `GET /meta/version` | none | `data: { name, version, api: "v1", environment, commit }`. `commit` is the git SHA the image was built from (`GIT_SHA`), or `null`. |
 | `GET /files/*key?token=` | token | Local storage driver only. See 1.5. |
 
 ### 2.2 Auth

@@ -61,5 +61,5 @@ const pkg = JSON.parse(
 ) as { name: string; version: string };
 
 healthRouter.get('/meta/version', (_req, res) => {
-  ok(res, { name: pkg.name, version: pkg.version, api: 'v1', environment: env.NODE_ENV }, 'Versi');
+  ok(res, { name: pkg.name, version: pkg.version, api: 'v1', environment: env.NODE_ENV, commit: env.GIT_SHA ?? null }, 'Versi');
 });

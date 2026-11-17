@@ -18,6 +18,7 @@ reach a browser, a response, a log line or an error message. Several automated c
 | [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) | The plan from here to launch (phases E to J): real providers, real core prompts, deploy, beta. |
 | [`backend/docs/API.md`](backend/docs/API.md) | Endpoint reference for the frontend. |
 | `docker-compose.yml` | Local PostgreSQL (host port 5433), Redis and MinIO. Development only. |
+| [`deploy/`](deploy/README.md) | Staging/production stack (Caddy, Nginx, API, worker), deploy verification and backups. |
 | `.github/workflows/ci.yml` | CI: backend, frontend and the prompt-leak checks. |
 | `scratch/tempe_eval/` | Sample photos (tempe, packaging) from the initial commit. Nothing in the code references them. |
 

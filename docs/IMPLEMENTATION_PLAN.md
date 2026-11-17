@@ -40,6 +40,17 @@ dan admin di API asli, tes kebocoran prompt dan RBAC, CI yang memblokir merge ke
 Risiko terbesar adalah **kualitas hasil dari provider asli dan core prompt asli**, karena seluruh nilai produk bergantung
 pada keduanya. Karena itu urutan fase di bawah dimulai dari sana.
 
+### Alat yang sudah dibangun (17/11/2026)
+
+| Fase | Sudah ada di repo | Masih dikerjakan manusia |
+|------|-------------------|--------------------------|
+| E | `npm run models:smoke`: satu panggilan nyata per model yang key-nya diatur, hasil ke `model_configs.last_test_*` | Mengisi API key, menjalankan smoke test, memperbaiki adapter yang gagal |
+| F | `npm run benchmark -- --refs <folder>`: pipeline asli per model × template × foto, hasil gambar + `results.csv` dengan kolom penilaian kosong | Golden set, core prompt asli, menilai hasil, menutup Q-01 |
+| G | Dockerfile backend/web, `deploy/docker-compose.prod.yml`, Nginx + Caddy, `.github/workflows/deploy.yml`, `deploy/verify-deploy.mjs`, `deploy/backup.sh`, `/meta/version` melaporkan commit | Menyiapkan VPS, DNS, GitHub environments; Sentry |
+| H–J | — | Playwright, k6, beta, launch |
+
+Panduan server: [`deploy/README.md`](../deploy/README.md).
+
 ---
 
 ## 2. Fase

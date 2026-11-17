@@ -1,0 +1,16 @@
+# Edge proxy: automatic HTTPS (Let's Encrypt) for SITE_ADDRESS, security headers, then the web container.
+# SITE_ADDRESS comes from deploy/.env, e.g. staging.sukamenak.org or sukamenak.org.
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	reverse_proxy web:80
+}
