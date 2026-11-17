@@ -22,7 +22,9 @@
     "migrate": "tsx src/db/migrate.ts up",
     "migrate:down": "tsx src/db/migrate.ts down",
     "seed": "tsx src/seed/index.ts",
-    "create-admin": "tsx src/seed/createAdmin.ts"
+    "create-admin": "tsx src/seed/createAdmin.ts",
+    "models:smoke": "tsx src/tools/modelSmoke.ts",
+    "benchmark": "tsx src/tools/benchmark.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1167.0",

@@ -18,7 +18,7 @@ export default defineConfig({
       provider: 'v8',
       include: ['src/**/*.ts'],
       // Process entry points and CLIs only wire things together; everything they call is measured.
-      exclude: ['src/server.ts', 'src/worker.ts', 'src/retention/cli.ts', 'src/seed/createAdmin.ts', 'src/db/migrate.ts', 'src/types/**'],
+      exclude: ['src/server.ts', 'src/worker.ts', 'src/retention/cli.ts', 'src/seed/createAdmin.ts', 'src/db/migrate.ts', 'src/types/**', 'src/tools/**'],
       reporter: ['text-summary', 'text', 'html', 'json-summary', 'lcov'],
       reportsDirectory: 'coverage',
       thresholds: { lines: 70 },
