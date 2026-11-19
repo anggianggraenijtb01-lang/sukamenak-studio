@@ -43,7 +43,7 @@ let admin: TestSession;
 let creator: TestSession;
 let corpus: LeakCorpus;
 const customBodies: string[] = [];
-const ids = { core: '', template: '', gen: '', gen2: '', crashed: '', ref: '', gallery: '', prompt: '' };
+const ids = { core: '', template: '', gen: '', gen2: '', crashed: '', ref: '', gallery: '', prompt: '', video: '' };
 let customKey = '';
 let customSlug = '';
 
@@ -153,6 +153,17 @@ beforeAll(async () => {
   await as(admin).post(`/generations/${ids.gen}/flag`, { flagged: true, note: 'cek' });
   ids.prompt = (await api().post('/api/v1/prompts').set(bearer(creator.accessToken)).send({ title: 'Prompt saya', body: 'kucing oranye di atas sofa' })).body.data.id;
 
+  // A finished video job inserted directly: rendering an mp4 here would cost a browser launch per run,
+  // and what this spec needs is the endpoints' serializers, not the renderer.
+  const videoRow = await pool.query<{ id: string }>(
+    `INSERT INTO video_jobs (generation_id, user_id, status, props, duration_seconds, progress, result_asset_id, finished_at)
+     SELECT g.id, g.user_id, 'done', '{"poster_key":"x","zones":[],"palette":[],"duration_seconds":15,"watermark":false,"brand_name":"Sukamenak"}',
+            15, 100, g.result_asset_id, now()
+       FROM generations g WHERE g.id = $1 RETURNING id`,
+    [ids.gen],
+  );
+  ids.video = videoRow.rows[0]?.id as string;
+
   corpus = await buildCorpus();
 });
 
@@ -215,6 +226,9 @@ describe('prompt-leak: every GET endpoint (public, creator, admin)', () => {
       '/references/library': { urls: ['/references/library', '/references/library?role=style'], auth: userAuth },
       '/generations': { urls: ['/generations?archived=all', '/generations?status=failed'], auth: userAuth },
       '/generations/:id': { urls: [ids.gen, ids.gen2, ids.crashed].map((id) => `/generations/${id}`), auth: userAuth },
+      '/videos': { urls: ['/videos', `/videos?generation_id=${ids.gen}`], auth: userAuth },
+      '/videos/quota': { urls: ['/videos/quota'], auth: userAuth },
+      '/videos/:id': { urls: [`/videos/${ids.video}`], auth: userAuth },
       '/admin/ping': { urls: ['/admin/ping'], auth: adminAuth },
       '/admin/users': { urls: ['/admin/users', '/admin/users?role=admin'], auth: adminAuth },
       '/admin/users/:id': { urls: [`/admin/users/${creator.id}`, `/admin/users/${admin.id}`], auth: adminAuth },

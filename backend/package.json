@@ -13,6 +13,8 @@
     "start": "node dist/server.js",
     "worker": "tsx src/worker.ts",
     "start:worker": "node dist/worker.js",
+    "video-worker": "tsx src/videoWorker.ts",
+    "start:video-worker": "node dist/videoWorker.js",
     "retention": "tsx src/retention/cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

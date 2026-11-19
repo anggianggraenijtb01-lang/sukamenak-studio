@@ -73,6 +73,12 @@ List endpoints take `page` (from 1) and `limit` (per-endpoint default and maximu
 | `JOB_TIMEOUT` | 504 | A generation ran past the job timeout (stored on the generation as `error_code`). |
 | `CANNOT_MODIFY_SELF` | 409 | An admin tried to deactivate, demote or delete themselves (or reset their own password via admin). |
 | `LAST_ADMIN` | 409 | The change would remove the last active admin. (Added in Phase C.) |
+| `VIDEO_DISABLED` | 503 | Video rendering is turned off (`VIDEO_ENABLED=false`). |
+| `VIDEO_NOT_ELIGIBLE` | 422 | The generation is not finished, has no composited text, or the template has no text zones. |
+| `VIDEO_ALREADY_RUNNING` | 409 | A render for this poster is already queued or running. |
+| `VIDEO_DAILY_LIMIT_REACHED` | 429 | `VIDEO_DAILY_LIMIT` renders today are used up. |
+| `VIDEO_RENDER_FAILED` | 500 | The renderer produced no usable file (stored on the job as `error_code`). |
+| `VIDEO_TIMEOUT` | 504 | The render ran past `VIDEO_JOB_TIMEOUT_MS` (stored on the job as `error_code`). |
 | `INTERNAL_ERROR` | 500 | Unexpected failure. Also `/health` answers 503 with this code when a dependency is down. |
 
 Generation failures stored in `generations.error_code` (returned as `error_code` of a failed generation) also include
@@ -211,6 +217,31 @@ There is no prompt, analysis, cost or model field.
 | `GET /generations/:id` | Owner only (404 otherwise). |
 | `POST /generations/:id/archive` | Archives. |
 | `DELETE /generations/:id` | Soft delete; removes the files and hides gallery entries made from it. |
+
+### 2.4 Video (poster to 9:16 reel)
+
+A video is a render of a finished generation, not a new model capability. See [`docs/VIDEO.md`](../docs/VIDEO.md).
+
+| Method and path | Notes |
+|---|---|
+| `POST /generations/:id/video` | **202** `{ id, status: "queued" }`. Body `{ duration_seconds?: 3..30 }` (default 15). Owner only; the generation must be `done` with composited text (`422 VIDEO_NOT_ELIGIBLE`), one render per poster at a time (`409 VIDEO_ALREADY_RUNNING`), `VIDEO_DAILY_LIMIT` per day (`429`). |
+| `GET /videos?page=&limit=(<=50)&generation_id=` | Own video jobs, paginated. |
+| `GET /videos/quota` | `{ limit, used }` for today. |
+| `GET /videos/:id` | Owner only (404 otherwise). Poll about every 2 s while `status` is `queued`/`rendering`. |
+| `DELETE /videos/:id` | Soft delete; removes the mp4. |
+
+```json
+{
+  "id": "...", "generation_id": "...", "status": "done", "composition": "story-promo",
+  "duration_seconds": 15, "width": 1080, "height": 1920, "fps": 30, "progress": 100,
+  "video_url": "signed", "thumbnail_url": "signed", "bytes": 2061685, "render_ms": 33120,
+  "error_code": null, "created_at": "...", "finished_at": "..."
+}
+```
+
+`video_url` and `thumbnail_url` are set only when `status` is `done`; `error_code` only when `failed`. There is no
+prompt, props or layout field: the stored props hold only the poster key, the slot texts and the brand palette.
+`/videos/:id/video_url` answers `206 Partial Content` for `Range` requests, so a player can seek.
 
 ---
 

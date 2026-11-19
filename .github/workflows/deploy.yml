@@ -94,6 +94,18 @@ jobs:
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
 
+      # ~300 MB of Chrome Headless Shell, so it gets its own cache scope.
+      - name: Video worker image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: video/Dockerfile
+          build-args: GIT_SHA=${{ env.SHA }}
+          tags: ${{ steps.prefix.outputs.prefix }}/sukamenak-video-worker:${{ env.SHA }}
+          push: true
+          cache-from: type=gha,scope=video
+          cache-to: type=gha,mode=max,scope=video
+
   deploy:
     name: deploy to ${{ inputs.environment || 'staging' }}
     needs: images

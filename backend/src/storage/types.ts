@@ -1,6 +1,9 @@
 export interface StoredObject {
   stream: NodeJS.ReadableStream;
   bytes: number;
+  /** Absolute path on disk, when the driver stores files locally. Lets `/files` answer Range requests by
+   *  seeking on disk instead of reading and discarding the bytes before the range. */
+  filePath?: string;
 }
 
 /**

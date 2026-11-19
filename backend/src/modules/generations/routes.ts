@@ -1,17 +1,38 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { accepted, ok, pageMeta } from '../../lib/response.js';
 import { requireAuth } from '../../middleware/auth.js';
 import { getValid, validate } from '../../middleware/validate.js';
+import { createVideoJob, DEFAULT_VIDEO_DURATION, MIN_VIDEO_DURATION } from '../../video/service.js';
 import { createGenerationSchemas, generationIdParams, listGenerationsSchemas } from './schemas.js';
 import * as service from './service.js';
 
 export const generationsRouter = Router();
+
+/** Video render of this poster; kept on the generation URL so the two stay linked. */
+export const generationVideoSchemas = {
+  params: z.object({ id: z.string().uuid() }),
+  body: z
+    .object({
+      // Same constants the service enforces. The upper bound is deploy-time (VIDEO_MAX_DURATION_SECONDS)
+      // and is checked there, so it is deliberately not duplicated here.
+      duration_seconds: z.number().int().min(MIN_VIDEO_DURATION).default(DEFAULT_VIDEO_DURATION),
+    })
+    .strict()
+    .default({}),
+};
 
 generationsRouter.use(requireAuth);
 // Generation state changes while a job runs; clients poll, so nothing here may be cached.
 generationsRouter.use((_req, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
   next();
+});
+
+generationsRouter.post('/:id/video', validate(generationVideoSchemas), async (req, res) => {
+  const { params, body } = getValid(req, generationVideoSchemas);
+  const job = await createVideoJob(req.user!.id, params.id, { durationSeconds: body.duration_seconds });
+  accepted(res, job, 'Video sedang dibuat');
 });
 
 generationsRouter.post('/', validate(createGenerationSchemas), async (req, res) => {

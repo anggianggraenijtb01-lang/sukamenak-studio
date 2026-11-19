@@ -44,6 +44,19 @@ const schema = z
     RETENTION_GENERATION_DAYS: intFromString(90, 1),
     RETENTION_HUMAN_REFERENCE_DAYS: intFromString(7, 1),
 
+    /** Video rendering is a separate worker (see src/videoWorker.ts); the API only enqueues jobs. */
+    VIDEO_ENABLED: boolish.default('true'),
+    VIDEO_QUEUE_NAME: z.string().min(1).default('videos'),
+    /** Renders one video at a time per worker: a render saturates the CPU it runs on. */
+    VIDEO_WORKER_CONCURRENCY: intFromString(1, 1),
+    /** Hard limit for one render, far above JOB_TIMEOUT_MS: 15 s at 1080x1920 takes ~40-60 s on 2 vCPU. */
+    VIDEO_JOB_TIMEOUT_MS: intFromString(300_000, 10_000),
+    VIDEO_DAILY_LIMIT: intFromString(3, 0),
+    VIDEO_MAX_DURATION_SECONDS: intFromString(15, 3),
+    VIDEO_RETENTION_DAYS: intFromString(30, 1),
+    /** Optional command override for the Remotion CLI wrapper; defaults to `video/render.mjs` in the repo. */
+    VIDEO_RENDER_COMMAND: optionalString,
+
     JWT_ACCESS_SECRET: secret,
     JWT_REFRESH_SECRET: secret,
     ACCESS_TOKEN_TTL_MINUTES: intFromString(60, 1),
