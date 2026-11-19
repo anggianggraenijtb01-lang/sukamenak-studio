@@ -115,3 +115,20 @@ Panduan server: [`deploy/README.md`](../deploy/README.md).
 - Provider `mock` tetap dipakai CI: pipeline end-to-end diuji tanpa key dan tanpa biaya. Uji provider asli dijalankan
   manual atau terjadwal, terpisah dari setiap push.
 - Core prompt asli tidak pernah masuk repo (repo publik). Tes di CI akan gagal bila prompt yang di-commit bukan stand-in.
+
+## 5. Status implementasi (19 November 2026)
+
+Kolom "kode" menjawab: apakah yang bisa ditulis sebagai kode sudah ada dan hijau. Kolom "sisa" adalah langkah yang
+butuh key, akun, foto, atau server — bukan pekerjaan coding.
+
+| Fase | Kode | Sisa pekerjaan |
+|------|------|----------------|
+| E | Adapter `gemini`/`openaiCompat`/`fal` dan `npm run models:smoke` sudah ada | Isi `GEMINI_API_KEY`/`ARK_API_KEY`/`FAL_KEY`, jalankan smoke, perbaiki adapter yang gagal. PRD v3.1 dan golden set masih di tim |
+| F | Seed + Core Prompt Manager + `npm run benchmark` sudah ada | Benchmark 3 kandidat i2i butuh key dan 10 foto produk asli. Penilaian DoD AI manual |
+| G | Dockerfile api/web/video-worker, `docker-compose.prod.yml`, Caddy, job deploy, `verify-deploy.mjs`, backup ada | VPS + DNS + GitHub Environments. Setelah itu staging diisi core prompt asli |
+| H | **Playwright** (`frontend/e2e`, lihat [`E2E.md`](E2E.md)) dan **k6 smoke** (`scripts/k6-smoke.js`) ada, jalan di CI dan setelah deploy | ≥10 template published, 6 tutorial final, galeri diisi hasil generate asli |
+| I | — | Beta 20 tester, SUS, wawancara |
+| J | — | Deploy produksi, latihan backup-restore, laporan PKM |
+
+Fitur video (poster → reel 9:16) tidak ada di rencana fase E–J; pekerjaannya berdiri sendiri dan sudah di-commit
+(lihat [`VIDEO.md`](VIDEO.md)).
