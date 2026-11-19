@@ -92,6 +92,23 @@ services:
       api:
         condition: service_healthy
 
+  # Renders posters into reels. A separate container because a render owns the CPU for ~40-60 s and
+  # must never queue behind (or delay) the generation worker.
+  video-worker:
+    <<: *backend-env
+    image: ${IMAGE_PREFIX}/sukamenak-video-worker:${IMAGE_TAG}
+    command: ['node', 'backend/dist/videoWorker.js']
+    restart: unless-stopped
+    healthcheck:
+      disable: true
+    volumes:
+      - storage:/app/backend/storage
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
   caddy:
     image: caddy:2
     restart: unless-stopped

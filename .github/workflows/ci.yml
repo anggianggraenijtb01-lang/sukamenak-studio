@@ -211,3 +211,51 @@ jobs:
       - name: Frontend source scan
         working-directory: backend
         run: npx vitest run test/security/frontend-source-leak.spec.ts
+
+  # Types and a single still frame of the Remotion composition. A full render is deliberately absent:
+  # it takes ~40 s plus a 300 MB browser download on every push, and the backend video specs already
+  # exercise the queue, storage and Range serving against a stand-in renderer.
+  video:
+    name: video (typecheck, still render)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: video
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: video/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Chrome Headless Shell is ~300 MB; key the cache on the Remotion version so an upgrade re-downloads.
+      - name: Cache Chrome Headless Shell
+        uses: actions/cache@v4
+        with:
+          path: video/node_modules/.remotion
+          key: remotion-browser-${{ runner.os }}-${{ hashFiles('video/package-lock.json') }}
+
+      - name: Render one still frame
+        run: |
+          mkdir -p out
+          npx remotion still src/index.ts StoryPromo out/ci-frame.png --frame=0
+
+      - name: The still is a 1080x1920 PNG
+        run: |
+          node -e "
+            const fs = require('node:fs');
+            const b = fs.readFileSync('out/ci-frame.png');
+            if (b.readUInt32BE(16) !== 1080 || b.readUInt32BE(20) !== 1920) {
+              throw new Error('unexpected canvas ' + b.readUInt32BE(16) + 'x' + b.readUInt32BE(20));
+            }
+            console.log('still ok', b.length, 'bytes');
+          "

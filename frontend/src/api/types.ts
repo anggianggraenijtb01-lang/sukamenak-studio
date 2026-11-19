@@ -485,6 +485,47 @@ export interface MyGenerationsQuery extends PageParams {
 }
 
 // ---------------------------------------------------------------------------------------------------
+// Video (poster -> 9:16 reel). See backend/docs/API.md section 2.4.
+// ---------------------------------------------------------------------------------------------------
+
+export type VideoStatus = 'queued' | 'rendering' | 'done' | 'failed';
+
+export interface VideoJob {
+  id: Uuid;
+  generation_id: Uuid;
+  status: VideoStatus;
+  composition: string;
+  duration_seconds: number;
+  width: number;
+  height: number;
+  fps: number;
+  /** 0-100 while rendering. */
+  progress: number;
+  /** Signed, expiring URL. Set only when `status` is `done`. */
+  video_url: string | null;
+  thumbnail_url: string | null;
+  bytes: number | null;
+  render_ms: number | null;
+  error_code: string | null;
+  created_at: IsoDateTime;
+  finished_at: IsoDateTime | null;
+}
+
+export interface CreateVideoResponse {
+  id: Uuid;
+  status: VideoStatus;
+}
+
+export interface VideoQuota {
+  limit: number;
+  used: number;
+}
+
+export interface MyVideosQuery extends PageParams {
+  generation_id?: Uuid;
+}
+
+// ---------------------------------------------------------------------------------------------------
 // Admin: users
 // ---------------------------------------------------------------------------------------------------
 

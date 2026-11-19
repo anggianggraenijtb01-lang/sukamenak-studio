@@ -1,5 +1,8 @@
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const TEST_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 /**
  * Deterministic environment for tests. Only DATABASE_URL_TEST may come from the developer's
@@ -13,6 +16,13 @@ export const testDatabaseUrl =
 
 /** Generated files of integration tests live here, never in the developer's ./storage. Wiped by global setup. */
 export const TEST_STORAGE_DIR = path.join(os.tmpdir(), 'sukamenak-studio-test-storage');
+
+/**
+ * Video rendering in tests runs a stand-in script, not Remotion: the endpoints and the job state
+ * machine are what these specs cover. The real renderer is typechecked in video/ and rendered
+ * manually (see video/README.md).
+ */
+export const TEST_RENDER_SCRIPT = path.join(TEST_ROOT, 'fixtures', 'fakeRender.mjs');
 
 export const testEnv: Record<string, string> = {
   NODE_ENV: 'test',
@@ -43,4 +53,9 @@ export const testEnv: Record<string, string> = {
   PORT: '3999',
   SEED_ADMIN_PASSWORD: TEST_ADMIN_PASSWORD,
   SEED_DEMO_PASSWORD: TEST_DEMO_PASSWORD,
+  VIDEO_ENABLED: 'true',
+  VIDEO_DAILY_LIMIT: '3',
+  VIDEO_MAX_DURATION_SECONDS: '15',
+  VIDEO_JOB_TIMEOUT_MS: '20000',
+  VIDEO_RENDER_COMMAND: TEST_RENDER_SCRIPT,
 };

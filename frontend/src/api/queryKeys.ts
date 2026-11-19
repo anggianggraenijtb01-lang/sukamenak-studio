@@ -22,6 +22,7 @@ import type {
   LibraryReferencesQuery,
   MyGenerationsQuery,
   MyReferencesQuery,
+  MyVideosQuery,
   PageParams,
   TemplateListQuery,
   TutorialListQuery,
@@ -69,6 +70,15 @@ export const queryKeys = {
     lists: () => ['generations', 'list'] as const,
     list: (query?: MyGenerationsQuery) => ['generations', 'list', orEmpty(query)] as const,
     detail: (id: string) => ['generations', 'detail', id] as const,
+  },
+
+  /** Video jobs (`/videos`). One family per render, so polling a detail does not refetch the lists. */
+  videos: {
+    all: ['videos'] as const,
+    lists: () => ['videos', 'list'] as const,
+    list: (query?: MyVideosQuery) => ['videos', 'list', orEmpty(query)] as const,
+    detail: (id: string) => ['videos', 'detail', id] as const,
+    quota: () => ['videos', 'quota'] as const,
   },
 
   // ---- admin -------------------------------------------------------------------------------------------

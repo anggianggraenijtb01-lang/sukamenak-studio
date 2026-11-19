@@ -13,6 +13,7 @@ import { STATUS_LABELS } from '../../components/creator/labels';
 import { ConfirmDialog, Modal } from '../../components/creator/Modal';
 import { EmptyBlock, ErrorBlock, LoadingBlock } from '../../components/creator/StateViews';
 import { referenceBadge } from '../../components/creator/studioLogic';
+import { VideoPanel } from '../../components/creator/VideoPanel';
 
 const PAGE_SIZE = 12;
 const POLL_MS = 3000;
@@ -410,6 +411,7 @@ const ViewModal: React.FC<{ item: Generation; onClose: () => void; onDownload: (
           </button>
         )}
       </div>
+      {done && <VideoPanel generation={item} />}
     </Modal>
   );
 };

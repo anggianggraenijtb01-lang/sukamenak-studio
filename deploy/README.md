@@ -8,8 +8,14 @@ internet ──443──> caddy (TLS otomatis, security headers)
                     └──> web  (Nginx: SPA + proxy /api)
                            └──> api ──> postgres, redis
                                 worker (BullMQ) ──> postgres, redis
-                    volume "storage" dipakai bersama oleh api, worker, tools
+                                video-worker (Remotion + Chrome) ──> postgres, redis
+                    volume "storage" dipakai bersama oleh api, worker, video-worker, tools
 ```
+
+`video-worker` memakai image sendiri (`sukamenak-video-worker`, dibangun dari `video/Dockerfile`) karena
+membawa Chrome Headless Shell ~300 MB. Ia merender poster menjadi reel 9:16; satu render memakai seluruh
+CPU selama ~40–60 detik, jadi container terpisah supaya generasi gambar tidak ikut menunggu. Minimum
+server untuk fitur ini: **2 vCPU / 4 GB**.
 
 Perbedaan dari PRD §6: PM2 tidak dipakai. Restart policy Docker sudah menjalankan peran yang sama.
 
