@@ -151,3 +151,16 @@ jobs:
 
       - name: Verify the deploy (health, commit, served bundle)
         run: node deploy/verify-deploy.mjs --url "${{ vars.DEPLOY_URL }}" --commit "$SHA"
+
+      # Phase H smoke, against the environment that was just deployed. Read-only: it never creates a
+      # generation, so it costs nothing. A missing demo account just skips the authenticated requests.
+      - name: Smoke test the deployed environment (k6)
+        env:
+          BASE: ${{ vars.DEPLOY_URL }}/api/v1
+          DEMO_EMAIL: ${{ vars.SMOKE_DEMO_EMAIL }}
+          DEMO_PASSWORD: ${{ secrets.SMOKE_DEMO_PASSWORD }}
+        run: |
+          docker run --rm -i --network host \
+            -e BASE -e DEMO_EMAIL -e DEMO_PASSWORD \
+            -v "$PWD/scripts:/scripts:ro" \
+            grafana/k6:0.54.0 run /scripts/k6-smoke.js
