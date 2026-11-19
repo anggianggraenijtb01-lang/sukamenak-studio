@@ -92,7 +92,8 @@ export const StudioGenerator: React.FC = () => {
 
   // ---- form state --------------------------------------------------------------------------------------
   const [values, setValues] = useState<Record<string, string>>({});
-  const [mode, setMode] = useState<GenerationMode>('i2i');
+  // A deep link (`?mode=t2i`) picks the mode; the template then narrows it to what it allows.
+  const [mode, setMode] = useState<GenerationMode>(requestedMode ?? 'i2i');
   const [remarks, setRemarks] = useState(() => readStudioHandoff(location.state)?.prompt.slice(0, MAX_REMARKS_LENGTH) ?? '');
   const [consent, setConsent] = useState(false);
   const [uploadRole, setUploadRole] = useState<ReferenceRole>('product');
