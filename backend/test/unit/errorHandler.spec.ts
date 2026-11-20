@@ -2,17 +2,18 @@ import type { Request, Response } from 'express';
 import { describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../src/middleware/errorHandler.js';
 
-function harness() {
+function harness(headersSent = false) {
   const log = { debug: vi.fn(), warn: vi.fn(), error: vi.fn() };
-  const res = { headersSent: false, status: vi.fn(), json: vi.fn() };
+  const res = { headersSent, status: vi.fn(), json: vi.fn() };
   res.status.mockReturnValue(res);
   const req = { log, requestId: 'req-1' };
+  const next = vi.fn();
   return {
     log,
     res,
-    req,
+    next,
     call: (err: unknown) =>
-      errorHandler(err, req as unknown as Request, res as unknown as Response, vi.fn()),
+      errorHandler(err, req as unknown as Request, res as unknown as Response, next),
   };
 }
 
@@ -25,6 +26,14 @@ describe('errorHandler', () => {
     expect(log.error).not.toHaveBeenCalled();
     expect(log.debug).toHaveBeenCalledTimes(1);
     expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it('swallows a cancelled download even after the headers went out', () => {
+    const { log, next, call } = harness(true);
+    call(withCode('ERR_STREAM_PREMATURE_CLOSE'));
+    expect(log.debug).toHaveBeenCalledTimes(1);
+    // Forwarding it here reaches Express's default handler, which prints the whole stack.
+    expect(next).not.toHaveBeenCalled();
   });
 
   it('still reports a genuine failure with 500 and an error log', () => {

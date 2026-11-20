@@ -31,12 +31,14 @@ function isClientAbort(err: unknown): boolean {
  * and answered with a generic 500: no stack, message or SQL detail ever reaches the client.
  */
 export const errorHandler: ErrorRequestHandler = (err: unknown, req, res, next) => {
-  if (res.headersSent) return next(err);
-
+  // Checked before the headersSent branch below: a cancelled stream has usually already started the
+  // response, and forwarding it there only reaches Express's default handler, which prints the stack.
   if (isClientAbort(err)) {
     (req.log ?? logger).debug({ request_id: req.requestId }, 'client aborted the request');
     return;
   }
+
+  if (res.headersSent) return next(err);
 
   let status = 500;
   let body: ErrorEnvelope = {
