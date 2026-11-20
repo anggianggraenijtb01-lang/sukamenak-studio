@@ -25,14 +25,11 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['src/test/setup.ts'],
     restoreMocks: true,
-    poolOptions: {
-      forks: {
-        // Node 23+ installs its own experimental `localStorage` on the global object, and without
-        // --localstorage-file it is undefined: jsdom's Storage then loses the shadowing race and
-        // `localStorage` is undefined inside tests. Disabling Node's webstorage lets jsdom's own
-        // implementation win. Accepted (as a no-op) by Node 22 and 24, which have no such global.
-        execArgv: ['--no-experimental-webstorage'],
-      },
-    },
+    // Node 23+ installs its own experimental `localStorage` on the global object, and without
+    // --localstorage-file it is undefined: jsdom's Storage then loses the shadowing race and
+    // `localStorage` is undefined inside tests. Disabling Node's webstorage lets jsdom's own
+    // implementation win. Accepted (as a no-op) by Node 22 and 24, which have no such global.
+    // Top-level since Vitest 4 (the old `poolOptions.forks.execArgv` shape was removed).
+    execArgv: ['--no-experimental-webstorage'],
   },
 });
