@@ -47,6 +47,15 @@ diganti menjadi `sukamenak_e2e`.
 E2E_DATABASE_URL=postgres://user:pass@host:5432/sukamenak_e2e npm run test:e2e
 ```
 
+### Memakai browser yang sudah terpasang
+
+Kalau unduhan Chromium Playwright gagal (CDN diblokir, koneksi lambat), jalankan dengan browser yang ada
+di mesin. CI tetap memakai Chromium milik Playwright.
+
+```bash
+E2E_CHANNEL=chrome npm run test:e2e     # atau msedge
+```
+
 ### Kalau gagal
 
 `trace` dan screenshot disimpan hanya saat gagal (`frontend/test-results`). Di CI, keduanya diunggah sebagai
@@ -68,9 +77,9 @@ docker run --rm -i --network host \
 Ambang yang dijaga: `http_req_duration{kind:read}` p95 < 1 detik, keseluruhan p95 < 3 detik, kegagalan
 < 1%, checks > 99%.
 
-Skrip ini **tidak** membuat generasi secara default — di staging itu berarti uang sungguhan. Set `GEN=1`
-kalau memang ingin satu generasi ikut diukur. Untuk endpoint ber-sesi, isi `DEMO_EMAIL` dan
-`DEMO_PASSWORD`; tanpa itu bagian `/me` dilewati.
+Skrip ini **tidak pernah menulis**: tidak ada generasi yang dibuat, jadi di staging ia tidak memakan biaya
+dan tidak meninggalkan baris data. Alur generate diuji Playwright, bukan di sini. Untuk endpoint ber-sesi,
+isi `DEMO_EMAIL` dan `DEMO_PASSWORD`; tanpa itu bagian `/me` dilewati.
 
 Di pipeline, k6 jalan otomatis setelah deploy staging/production berhasil (`deploy.yml`), memakai
 `vars.DEPLOY_URL` dan, bila diisi, `vars.SMOKE_DEMO_EMAIL` + `secrets.SMOKE_DEMO_PASSWORD`.

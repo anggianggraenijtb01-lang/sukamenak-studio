@@ -2,15 +2,14 @@
  * Phase H (docs/IMPLEMENTATION_PLAN.md): the k6 smoke test.
  *
  * Reads the endpoints every page hits on load, with a logged-in session, and fails the run when they get
- * slow. It never creates a generation by default, because on staging that costs real provider money;
- * set GEN=1 to include one.
+ * slow. It is deliberately read-only: it never creates a generation, so it costs nothing on staging and
+ * leaves no rows behind. The generation journey is covered by the Playwright specs instead.
  *
  *   k6 run scripts/k6-smoke.js
  *   BASE=https://staging.sukamenak.org/api/v1 DEMO_EMAIL=... DEMO_PASSWORD=... k6 run scripts/k6-smoke.js
- *   BASE=http://127.0.0.1:3998/api/v1 GEN=1 k6 run scripts/k6-smoke.js
  *
- * Without k6 installed: docker run --rm -i --network host -e BASE=... -v "$PWD/scripts:/scripts" \
- *   grafana/k6 run /scripts/k6-smoke.js      (Windows: drop --network host and pass host.docker.internal)
+ * Without k6 installed: docker run --rm -i -e BASE=... -v "$PWD/scripts:/scripts" \
+ *   grafana/k6 run /scripts/k6-smoke.js      (Windows: point BASE at host.docker.internal, not 127.0.0.1)
  */
 import http from 'k6/http';
 import { check, group, sleep } from 'k6';
@@ -18,8 +17,6 @@ import { check, group, sleep } from 'k6';
 const BASE = __ENV.BASE || 'http://127.0.0.1:3000/api/v1';
 const EMAIL = __ENV.DEMO_EMAIL || 'demo@sukamenak.studio';
 const PASSWORD = __ENV.DEMO_PASSWORD || '';
-const GEN = __ENV.GEN === '1';
-const TEMPLATE = __ENV.TEMPLATE || 'banner-pengumuman-layanan-publik';
 
 // The API applies a GLOBAL per-IP budget (RATE_LIMIT_PER_MINUTE, 60 by default). This profile must stay
 // under it or every request answers 429 and the run measures the limiter, not the app. One iteration
@@ -104,34 +101,6 @@ export default function (data) {
       group('me', () => {
         const res = http.get(`${BASE}/me`, { ...headers(data.token), tags: { kind: 'read' } });
         check(res, { 'me 200': (r) => r.status === 200 });
-      });
-    }
-
-    if (GEN && data.token) {
-      group('generation', () => {
-        const created = http.post(
-          `${BASE}/generations`,
-          JSON.stringify({
-            template_slug: TEMPLATE,
-            mode: 't2i',
-            remarks: 'k6 smoke: pengumuman layanan warga, suasana cerah',
-          }),
-          { ...headers(data.token), tags: { kind: 'generate' } },
-        );
-        check(created, { 'generation 201': (r) => r.status === 201 });
-        const id = created.status === 201 ? safeJson(created)?.data?.id : null;
-        if (!id) return;
-        // Poll like the studio does, then stop: the request itself is what the smoke test measures.
-        for (let i = 0; i < 30; i += 1) {
-          const one = http.get(`${BASE}/generations/${id}`, { ...headers(data.token), tags: { kind: 'poll' } });
-          if (!check(one, { 'poll 200': (r) => r.status === 200 })) return;
-          const status = safeJson(one)?.data?.status;
-          if (status === 'done' || status === 'failed') {
-            check(one, { 'generation finished': () => status === 'done' });
-            return;
-          }
-          sleep(2);
-        }
       });
     }
   } finally {
