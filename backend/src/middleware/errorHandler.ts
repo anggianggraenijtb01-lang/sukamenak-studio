@@ -16,11 +16,27 @@ interface HttpLikeError {
 }
 
 /**
+ * The browser cancelled a request mid-stream (navigated away, closed the tab, aborted an image). It is
+ * routine, there is nobody left to answer, and logging it at error level buries the failures that matter.
+ * ECONNRESET is deliberately absent: an upstream connection reset happens inside handlers too.
+ */
+function isClientAbort(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false;
+  const code = (err as { code?: unknown }).code;
+  return code === 'ERR_STREAM_PREMATURE_CLOSE' || code === 'EPIPE';
+}
+
+/**
  * Single place that turns errors into the API envelope. Unknown errors are logged (redacted)
  * and answered with a generic 500: no stack, message or SQL detail ever reaches the client.
  */
 export const errorHandler: ErrorRequestHandler = (err: unknown, req, res, next) => {
   if (res.headersSent) return next(err);
+
+  if (isClientAbort(err)) {
+    (req.log ?? logger).debug({ request_id: req.requestId }, 'client aborted the request');
+    return;
+  }
 
   let status = 500;
   let body: ErrorEnvelope = {
