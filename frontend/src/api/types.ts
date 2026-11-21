@@ -967,6 +967,8 @@ export interface AdminGenerationFilters {
   to?: DateString;
   degraded?: boolean;
   flagged?: boolean;
+  /** true: finished, not deleted or purged, image still stored (usable for gallery curation). */
+  available?: boolean;
 }
 
 export interface AdminGenerationsQuery extends AdminGenerationFilters, PageParams {}

@@ -68,8 +68,8 @@ const CreateModal: React.FC<{ onClose: () => void; onSaved: (msg: string) => voi
   const [error, setError] = useState<{ message: string; fields: Record<string, string> } | null>(null);
 
   const doneGenerations = useQuery({
-    queryKey: queryKeys.admin.generations.list({ status: 'done', limit: 30 }),
-    queryFn: ({ signal }) => adminListGenerations({ status: 'done', limit: 30 }, signal),
+    queryKey: queryKeys.admin.generations.list({ status: 'done', available: true, limit: 30 }),
+    queryFn: ({ signal }) => adminListGenerations({ status: 'done', available: true, limit: 30 }, signal),
     staleTime: 60_000,
     enabled: source === 'generation',
   });

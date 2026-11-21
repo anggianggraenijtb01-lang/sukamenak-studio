@@ -13,6 +13,8 @@ const filterShape = {
   to: dateOnly.optional(),
   degraded: boolQuery.optional(),
   flagged: boolQuery.optional(),
+  /** true = finished, not deleted/purged and its image file still exists (what the gallery curation can use). */
+  available: boolQuery.optional(),
 };
 
 const dateOrder = (v: { from?: string; to?: string }, ctx: z.RefinementCtx) => {
