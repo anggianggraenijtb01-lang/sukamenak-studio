@@ -6,3 +6,12 @@
 ALTER TABLE model_configs DROP CONSTRAINT model_configs_provider_check;
 ALTER TABLE model_configs ADD CONSTRAINT model_configs_provider_check
   CHECK (provider IN ('mock', 'openai_compat', 'gemini', 'fal', 'cloudflare'));
+
+-- Down Migration
+
+-- Rows that still name the provider would violate the narrower CHECK, so they go first. Generations and
+-- audit rows keep their history: every foreign key to model_configs is ON DELETE SET NULL.
+DELETE FROM model_configs WHERE provider = 'cloudflare';
+ALTER TABLE model_configs DROP CONSTRAINT model_configs_provider_check;
+ALTER TABLE model_configs ADD CONSTRAINT model_configs_provider_check
+  CHECK (provider IN ('mock', 'openai_compat', 'gemini', 'fal'));
