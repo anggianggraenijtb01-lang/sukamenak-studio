@@ -177,3 +177,74 @@ describe('video jobs', () => {
     expect(assetAfter.rows[0]?.deleted_at).toBeTruthy();
   });
 });
+
+/**
+ * Deleting must not be a way around the render guards or a way to keep a video the creator thought was
+ * gone. A fresh user keeps these tests clear of the shared account's daily quota.
+ */
+describe('video deletion rules', () => {
+  let owner: TestSession;
+  let poster: string;
+  let doneJobId: string;
+
+  /** A job the worker will never touch: a copy of a finished one, forced into `rendering`. */
+  async function insertRenderingCopy(): Promise<string> {
+    const copy = await pool.query<{ id: string }>(
+      `INSERT INTO video_jobs (generation_id, user_id, props, duration_seconds, status)
+       SELECT generation_id, user_id, props, duration_seconds, 'rendering' FROM video_jobs WHERE id = $1
+       RETURNING id`,
+      [doneJobId],
+    );
+    return copy.rows[0]!.id;
+  }
+
+  beforeAll(async () => {
+    owner = await registerUser();
+    const ref = await createReferenceId(owner, 'product', '#448844');
+    const gen = await postGeneration(owner, {
+      template_slug: 'poster-promo-produk',
+      reference_ids: [ref],
+      slot_values: { title: 'Promo Keripik', product: 'keripik tempe', cta: 'Pesan sekarang' },
+    });
+    expect(gen.status).toBe(202);
+    expect((await settle(owner, gen.body.data.id)).status).toBe('done');
+    poster = gen.body.data.id as string;
+
+    const created = await createVideo(owner, poster);
+    expect(created.status).toBe(202);
+    await awaitVideoQueueIdle();
+    doneJobId = created.body.data.id as string;
+    expect((await video(owner, doneJobId)).body.data.status).toBe('done');
+  });
+
+  it('refuses to delete a job that is queued or rendering, so the quota and the one-render guard hold', async () => {
+    const activeId = await insertRenderingCopy();
+
+    const del = await api().delete(`/api/v1/videos/${activeId}`).set(bearer(owner.accessToken));
+    expect(del.status).toBe(409);
+    expect(del.body.error_code).toBe('VIDEO_STILL_RENDERING');
+    const row = await pool.query<{ deleted_at: Date | null }>('SELECT deleted_at FROM video_jobs WHERE id = $1', [activeId]);
+    expect(row.rows[0]?.deleted_at).toBeNull();
+
+    // Once the render has ended, the same job can be deleted.
+    await pool.query("UPDATE video_jobs SET status = 'failed' WHERE id = $1", [activeId]);
+    const retry = await api().delete(`/api/v1/videos/${activeId}`).set(bearer(owner.accessToken));
+    expect(retry.status).toBe(200);
+  });
+
+  it("takes the poster's videos down with it when the generation is deleted", async () => {
+    const activeId = await insertRenderingCopy();
+    const assetId = (await pool.query<{ result_asset_id: string }>('SELECT result_asset_id FROM video_jobs WHERE id = $1', [doneJobId])).rows[0]!
+      .result_asset_id;
+
+    const del = await api().delete(`/api/v1/generations/${poster}`).set(bearer(owner.accessToken));
+    expect(del.status).toBe(200);
+
+    expect((await video(owner, doneJobId)).status).toBe(404);
+    expect((await video(owner, activeId)).status).toBe(404);
+    const list = await api().get(`/api/v1/videos?generation_id=${poster}`).set(bearer(owner.accessToken));
+    expect(list.body.data).toEqual([]);
+    const asset = await pool.query<{ deleted_at: Date | null }>('SELECT deleted_at FROM assets WHERE id = $1', [assetId]);
+    expect(asset.rows[0]?.deleted_at).toBeTruthy();
+  });
+});

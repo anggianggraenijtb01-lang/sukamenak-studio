@@ -29,9 +29,9 @@ Endpoint:
 | `GET /videos` | Milik sendiri, paginasi, filter `generation_id` |
 | `GET /videos/quota` | `{limit, used}` hari ini |
 | `GET /videos/:id` | Detail + `video_url` / `thumbnail_url` bertanda tangan |
-| `DELETE /videos/:id` | Soft delete + hapus file |
+| `DELETE /videos/:id` | Soft delete + hapus file. Job `queued`/`rendering` ditolak (`VIDEO_STILL_RENDERING`). Menghapus generasinya (`DELETE /generations/:id`) ikut menghapus semua videonya |
 
-Error: `VIDEO_DISABLED` (503), `VIDEO_NOT_ELIGIBLE` (422), `VIDEO_ALREADY_RUNNING` (409),
+Error: `VIDEO_DISABLED` (503), `VIDEO_NOT_ELIGIBLE` (422), `VIDEO_ALREADY_RUNNING` (409), `VIDEO_STILL_RENDERING` (409),
 `VIDEO_DAILY_LIMIT_REACHED` (429), `VIDEO_RENDER_FAILED` (500), `VIDEO_TIMEOUT` (504).
 
 ## Menjalankan
