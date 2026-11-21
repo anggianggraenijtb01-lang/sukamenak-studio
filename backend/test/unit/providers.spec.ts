@@ -1,5 +1,6 @@
 import sharp from 'sharp';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { createCloudflareProvider } from '../../src/providers/cloudflare.js';
 import { createFalProvider } from '../../src/providers/fal.js';
 import { createGeminiProvider } from '../../src/providers/gemini.js';
 import { createOpenAiCompatProvider } from '../../src/providers/openaiCompat.js';
@@ -418,5 +419,80 @@ describe('fal adapter', () => {
     const provider = createFalProvider();
     expect(provider.analyzeReference).toBeUndefined();
     expect(provider.improveText).toBeUndefined();
+  });
+});
+
+describe('cloudflare adapter', () => {
+  // Smallest thing that sniffs as a JPEG; the adapter only decodes and passes the bytes on.
+  const jpegB64 = () => Buffer.from([0xff, 0xd8, 0xff, 0xdb, 0x00, 0x43, 0x00, 0x01]).toString('base64');
+  const ccfg = (over: Partial<ModelConfigRecord> = {}) =>
+    config({
+      provider: 'cloudflare',
+      capability: 't2i',
+      model_id: '@cf/black-forest-labs/flux-1-schnell',
+      base_url: 'https://cf.example.test/accounts/acc-1/ai/run',
+      ...over,
+    });
+  const ok = () => json({ success: true, result: { image: jpegB64() } });
+
+  it('t2i posts {prompt, steps} and returns the decoded image', async () => {
+    const { fetch, calls } = fakeFetch(ok);
+    const result = await createCloudflareProvider({ fetch }).generateImage!(ccfg(), genInput({ mode: 't2i', references: [] }));
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.url).toBe('https://cf.example.test/accounts/acc-1/ai/run/@cf/black-forest-labs/flux-1-schnell');
+    expect(header(calls[0]!, 'Authorization')).toBe(`Bearer ${KEY}`);
+    expect(header(calls[0]!, 'Content-Type')).toBe('application/json');
+    expect(JSON.parse(String(calls[0]!.init.body))).toEqual({ prompt: PROMPT, steps: 4 });
+
+    expect(result.mime).toBe('image/jpeg');
+    expect(result.referencesUsed).toBe(0);
+    expect(result.image.length).toBe(8);
+    expect(result.costUsd).toBe(0.04);
+  });
+
+  it('i2i posts the prompt and one reference image as multipart', async () => {
+    const { fetch, calls } = fakeFetch(ok);
+    const result = await createCloudflareProvider({ fetch }).generateImage!(
+      ccfg({ capability: 'i2i', model_id: '@cf/black-forest-labs/flux-2-klein-4b' }),
+      genInput(),
+    );
+
+    const body = calls[0]!.init.body as FormData;
+    expect(body).toBeInstanceOf(FormData);
+    expect(body.get('prompt')).toBe(PROMPT);
+    // Multi-image endpoints do not exist on Workers AI: only the first reference is sent.
+    expect(body.getAll('image')).toHaveLength(1);
+    expect(header(calls[0]!, 'Content-Type')).toBeUndefined();
+    expect(result.referencesUsed).toBe(1);
+  });
+
+  it('maps the daily neuron allocation running out to a non-retryable failure', async () => {
+    const quota = fakeFetch(() => json({ success: false, errors: [{ code: 4006, message: 'out of neurons' }] }));
+    const e1 = (await createCloudflareProvider({ fetch: quota.fetch })
+      .generateImage!(ccfg(), genInput({ mode: 't2i', references: [] }))
+      .catch((e: unknown) => e)) as ProviderError;
+    expect(e1).toMatchObject({ code: 'PROVIDER_UNAVAILABLE', transient: true });
+
+    const busy = fakeFetch(() => json({ success: false, errors: [{ code: 3040, message: 'capacity' }] }));
+    const e2 = (await createCloudflareProvider({ fetch: busy.fetch })
+      .generateImage!(ccfg(), genInput({ mode: 't2i', references: [] }))
+      .catch((e: unknown) => e)) as ProviderError;
+    expect(e2.code).toBe('PROVIDER_RATE_LIMITED');
+
+    const auth = fakeFetch(() => json({ success: false, errors: [{ code: 10000, message: `${KEY} ${PROMPT}` }] }));
+    const e3 = (await createCloudflareProvider({ fetch: auth.fetch })
+      .generateImage!(ccfg(), genInput({ mode: 't2i', references: [] }))
+      .catch((e: unknown) => e)) as ProviderError;
+    expect(e3.code).toBe('PROVIDER_AUTH');
+    expect(e3.message).not.toContain('SECRET');
+  });
+
+  it('refuses to call anything when the response carries no image', async () => {
+    const bad = fakeFetch(() => json({ success: true, result: {} }));
+    const err = (await createCloudflareProvider({ fetch: bad.fetch })
+      .generateImage!(ccfg(), genInput({ mode: 't2i', references: [] }))
+      .catch((e: unknown) => e)) as ProviderError;
+    expect(err.code).toBe('PROVIDER_BAD_RESPONSE');
   });
 });

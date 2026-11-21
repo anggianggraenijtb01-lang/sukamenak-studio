@@ -96,6 +96,9 @@ const schema = z
     OPENAI_API_KEY: optionalString,
     FAL_KEY: optionalString,
     ARK_API_KEY: optionalString,
+    /** Cloudflare Workers AI token; the Account ID below is not a secret and only feeds the default URL. */
+    CF_API_TOKEN: optionalString,
+    CF_ACCOUNT_ID: optionalString,
 
     SEED_ADMIN_PASSWORD: optionalString,
     SEED_DEMO_PASSWORD: optionalString,
