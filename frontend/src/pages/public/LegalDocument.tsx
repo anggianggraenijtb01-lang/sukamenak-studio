@@ -38,7 +38,7 @@ export const LegalDocument: React.FC<LegalDocumentProps> = ({ title, intro, upda
         </div>
         <h1 className="text-3xl sm:text-4xl font-black text-[#0F172A] tracking-tight">{title}</h1>
         <p className="text-sm sm:text-base text-[#475569] leading-relaxed">{intro}</p>
-        <p className="text-xs text-slate-400 font-semibold">Terakhir diperbarui: {updated} (draf)</p>
+        <p className="text-xs text-slate-500 font-semibold">Terakhir diperbarui: {updated} (draf)</p>
       </header>
 
       <nav aria-label="Daftar isi" className="bg-white rounded-3xl border border-[#E2E8F0] p-5 sm:p-6 shadow-xs">

@@ -21,7 +21,7 @@ export const isRouter = (handle: unknown): handle is Router =>
 export const layerMatches = (layer: LayerLike, path: string): boolean => (layer.matchers ?? []).some((m) => Boolean(m(path)));
 
 /** Mount prefixes of `createApiRouter()` (everything not listed here is an unknown mount and fails the walk). */
-const API_PREFIXES = ['/auth', '/me', '/templates', '/gallery', '/tutorials', '/prompts', '/references', '/generations', '/files', '/admin'];
+const API_PREFIXES = ['/auth', '/me', '/templates', '/gallery', '/tutorials', '/prompts', '/references', '/generations', '/videos', '/files', '/admin'];
 
 function routesOf(layers: LayerLike[], prefix: string, problems: string[]): RouteLike[] {
   const out: RouteLike[] = [];

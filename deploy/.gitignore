@@ -1,0 +1,5 @@
+# Server-side files that must never be committed.
+.env
+backups/
+golden/
+benchmark-results/

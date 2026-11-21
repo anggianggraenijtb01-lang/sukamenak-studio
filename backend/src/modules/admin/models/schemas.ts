@@ -4,7 +4,7 @@ import { isDisallowedHost } from '../../../lib/outboundUrl.js';
 import { isAllowedProviderKeyEnv, PROVIDER_KEY_ENV_RULE } from '../../../lib/providerKeyEnv.js';
 import { boolQuery, idParams, pageFields, requireAnyKey } from '../common.js';
 
-export const PROVIDERS = ['mock', 'openai_compat', 'gemini', 'fal'] as const;
+export const PROVIDERS = ['mock', 'openai_compat', 'gemini', 'fal', 'cloudflare'] as const;
 export const CAPABILITIES = ['vision', 'text', 't2i', 'i2i'] as const;
 
 /**

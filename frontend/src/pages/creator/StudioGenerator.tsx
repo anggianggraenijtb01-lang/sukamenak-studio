@@ -92,7 +92,8 @@ export const StudioGenerator: React.FC = () => {
 
   // ---- form state --------------------------------------------------------------------------------------
   const [values, setValues] = useState<Record<string, string>>({});
-  const [mode, setMode] = useState<GenerationMode>('i2i');
+  // A deep link (`?mode=t2i`) picks the mode; the template then narrows it to what it allows.
+  const [mode, setMode] = useState<GenerationMode>(requestedMode ?? 'i2i');
   const [remarks, setRemarks] = useState(() => readStudioHandoff(location.state)?.prompt.slice(0, MAX_REMARKS_LENGTH) ?? '');
   const [consent, setConsent] = useState(false);
   const [uploadRole, setUploadRole] = useState<ReferenceRole>('product');
@@ -247,7 +248,7 @@ export const StudioGenerator: React.FC = () => {
               <Sliders className="w-5 h-5 text-[#2563EB]" />
               <span>Pengaturan Desain Poster</span>
             </h2>
-            <span className="text-xs text-slate-400 font-medium">Langkah Praktis</span>
+            <span className="text-xs text-slate-500 font-medium">Langkah Praktis</span>
           </div>
 
           {templatesQuery.isLoading ? (
@@ -304,7 +305,7 @@ export const StudioGenerator: React.FC = () => {
                       ))}
                     </div>
                     {modes.length === 1 && (
-                      <p className="text-[11px] text-slate-400 mt-1.5">
+                      <p className="text-[11px] text-slate-500 mt-1.5">
                         Template ini hanya mendukung metode {modes[0] === 'i2i' ? 'Foto ke Gambar' : 'Teks ke Gambar'}.
                       </p>
                     )}
@@ -496,11 +497,11 @@ export const StudioGenerator: React.FC = () => {
                   {referenceBadge(done)}
                 </span>
                 {usedRefs.length > 0 && !done.used_reference_image && mode === 'i2i' && (
-                  <span className="text-[11px] text-slate-400">Foto referensi tidak dipakai langsung pada desain ini.</span>
+                  <span className="text-[11px] text-slate-500">Foto referensi tidak dipakai langsung pada desain ini.</span>
                 )}
               </div>
               {done.degraded && <DegradedNotice />}
-              {template?.disclaimer && <p className="text-[11px] text-slate-400 italic leading-relaxed">{template.disclaimer}</p>}
+              {template?.disclaimer && <p className="text-[11px] text-slate-500 italic leading-relaxed">{template.disclaimer}</p>}
             </div>
           )}
 

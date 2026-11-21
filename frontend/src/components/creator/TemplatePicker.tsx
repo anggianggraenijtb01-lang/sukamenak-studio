@@ -32,12 +32,12 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ templates, selec
             {t.preview_url ? (
               <img src={fileUrl(t.preview_url)} alt="" loading="lazy" className="w-full h-full object-cover" draggable={false} />
             ) : (
-              <ImageIcon className="w-4 h-4 text-slate-400" aria-hidden="true" />
+              <ImageIcon className="w-4 h-4 text-slate-500" aria-hidden="true" />
             )}
           </div>
           <div className="min-w-0 flex-1">
             <div className={`text-xs font-black leading-tight line-clamp-2 ${active ? 'text-[#2563EB]' : 'text-[#0F172A]'}`}>{t.name}</div>
-            <div className="text-[10px] text-slate-400 mt-0.5 truncate">
+            <div className="text-[10px] text-slate-600 mt-0.5 truncate">
               {categoryLabel(t.category)} &bull; {t.aspect_ratio}
             </div>
           </div>

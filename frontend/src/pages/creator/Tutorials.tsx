@@ -205,7 +205,7 @@ const TutorialListView: React.FC = () => {
             <h2 className="text-lg font-black text-[#0F172A]">
               Trik Fotografi Smartphone <span className="text-[#2563EB]">Tanpa Alat Mahal</span>
             </h2>
-            <span className="text-xs text-slate-400 font-medium">{SMARTPHONE_HACKS.length} Tips Khusus Kamera HP</span>
+            <span className="text-xs text-slate-500 font-medium">{SMARTPHONE_HACKS.length} Tips Khusus Kamera HP</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -279,7 +279,7 @@ const BreakdownCard: React.FC<{ item: VisualBreakdown; copied: boolean; failed: 
 
       <div className="pt-3 border-t border-slate-100 space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Teks Prompt Siap Pakai:</span>
+          <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Teks Prompt Siap Pakai:</span>
           <button type="button" onClick={onCopy} aria-label={`Salin teks prompt ${item.title}`} className="text-xs font-bold text-[#2563EB] hover:text-[#1D4ED8] flex items-center gap-1 cursor-pointer transition-colors">
             {copied ? (
               <>
@@ -346,7 +346,7 @@ const TutorialDetailView: React.FC<{ slug: string }> = ({ slug }) => {
                 <h2 className="text-lg font-black text-[#0F172A]">
                   Bedah Gaya Visual &amp; <span className="text-[#2563EB]">Snippet Prompt Siap Pakai</span>
                 </h2>
-                <span className="text-xs text-slate-400 font-medium">{tutorial.visual_breakdowns.length} Parameter</span>
+                <span className="text-xs text-slate-500 font-medium">{tutorial.visual_breakdowns.length} Parameter</span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {tutorial.visual_breakdowns.map((item) => (

@@ -10,6 +10,7 @@ import { promptsRouter } from './prompts/routes.js';
 import { referencesRouter } from './references/routes.js';
 import { templatesRouter } from './templates/routes.js';
 import { tutorialsRouter } from './tutorials/routes.js';
+import { videoRouter } from './videos/routes.js';
 
 /**
  * /api/v1 router. Phase C extends adminRouter.
@@ -25,6 +26,7 @@ export function createApiRouter(): Router {
   api.use('/prompts', promptsRouter);
   api.use('/references', referencesRouter);
   api.use('/generations', generationsRouter);
+  api.use('/videos', videoRouter);
   api.use('/files', filesRouter);
   api.use('/admin', adminRouter);
   return api;

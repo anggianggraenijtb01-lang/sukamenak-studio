@@ -211,3 +211,117 @@ jobs:
       - name: Frontend source scan
         working-directory: backend
         run: npx vitest run test/security/frontend-source-leak.spec.ts
+
+  # Phase H: the creator and admin journeys in a real browser, against the real API and a database that
+  # globalSetup rebuilds. Postgres is the only service: the suite runs the API with QUEUE_DRIVER=inline and
+  # STORAGE_DRIVER=local, and the seed installs mock providers, so no API key and no MinIO are involved.
+  e2e:
+    name: e2e (playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sukamenak
+          POSTGRES_PASSWORD: sukamenak
+          POSTGRES_DB: sukamenak
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U sukamenak"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      E2E_DATABASE_URL: postgres://sukamenak:sukamenak@localhost:5433/sukamenak_e2e
+      JWT_ACCESS_SECRET: ci-access-secret-0123456789abcdef0123456789abcd
+      JWT_REFRESH_SECRET: ci-refresh-secret-0123456789abcdef0123456789ab
+      # Test-only core-prompt key (32 bytes of 0x07, base64). The seed encrypts the stand-ins with it and
+      # the API decrypts them with the same value.
+      CORE_PROMPT_KEY: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=
+      FILE_SIGNING_SECRET: ci-file-signing-secret-0123456789abcdef01
+      CORS_ORIGIN: http://127.0.0.1:5173
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Install backend
+        working-directory: backend
+        run: npm ci
+
+      - name: Install frontend and the browser
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run the suite
+        working-directory: frontend
+        run: npm run test:e2e
+
+      - name: Upload the report when a flow failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            frontend/e2e/report
+            frontend/test-results
+          retention-days: 7
+
+  # Types and a single still frame of the Remotion composition. A full render is deliberately absent:
+  # it takes ~40 s plus a 300 MB browser download on every push, and the backend video specs already
+  # exercise the queue, storage and Range serving against a stand-in renderer.
+  video:
+    name: video (typecheck, still render)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: video
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: video/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Chrome Headless Shell is ~300 MB; key the cache on the Remotion version so an upgrade re-downloads.
+      - name: Cache Chrome Headless Shell
+        uses: actions/cache@v4
+        with:
+          path: video/node_modules/.remotion
+          key: remotion-browser-${{ runner.os }}-${{ hashFiles('video/package-lock.json') }}
+
+      - name: Render one still frame
+        run: |
+          mkdir -p out
+          npx remotion still src/index.ts StoryPromo out/ci-frame.png --frame=0
+
+      - name: The still is a 1080x1920 PNG
+        run: |
+          node -e "
+            const fs = require('node:fs');
+            const b = fs.readFileSync('out/ci-frame.png');
+            if (b.readUInt32BE(16) !== 1080 || b.readUInt32BE(20) !== 1920) {
+              throw new Error('unexpected canvas ' + b.readUInt32BE(16) + 'x' + b.readUInt32BE(20));
+            }
+            console.log('still ok', b.length, 'bytes');
+          "

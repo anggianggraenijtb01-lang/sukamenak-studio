@@ -13,6 +13,7 @@ import { STATUS_LABELS } from '../../components/creator/labels';
 import { ConfirmDialog, Modal } from '../../components/creator/Modal';
 import { EmptyBlock, ErrorBlock, LoadingBlock } from '../../components/creator/StateViews';
 import { referenceBadge } from '../../components/creator/studioLogic';
+import { VideoPanel } from '../../components/creator/VideoPanel';
 
 const PAGE_SIZE = 12;
 const POLL_MS = 3000;
@@ -323,7 +324,7 @@ const HistoryCard: React.FC<{
           <h3 className="text-sm font-bold text-[#0F172A] line-clamp-1 leading-snug" title={title}>
             {title}
           </h3>
-          <div className="text-[11px] text-slate-400 font-medium line-clamp-1">
+          <div className="text-[11px] text-slate-500 font-medium line-clamp-1">
             {item.template?.name ?? 'Template tidak tersedia'}
             {done ? ` • ${referenceBadge(item)}` : ''}
           </div>
@@ -410,6 +411,7 @@ const ViewModal: React.FC<{ item: Generation; onClose: () => void; onDownload: (
           </button>
         )}
       </div>
+      {done && <VideoPanel generation={item} />}
     </Modal>
   );
 };

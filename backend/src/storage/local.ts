@@ -29,7 +29,7 @@ export function createLocalStorage(rootDir: string, baseUrl: string = env.PUBLIC
       try {
         const info = await stat(full);
         if (!info.isFile()) return null;
-        return { stream: createReadStream(full), bytes: info.size };
+        return { stream: createReadStream(full), bytes: info.size, filePath: full };
       } catch {
         return null;
       }

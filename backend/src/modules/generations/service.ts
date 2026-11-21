@@ -173,8 +173,23 @@ export async function deleteMyGeneration(userId: string, id: string): Promise<vo
     );
     const row = rows[0];
     if (!row) throw notFound('Generasi');
+    // Checked after the ownership match so another user's id is still a plain 404. Throwing rolls the
+    // UPDATE above back. Deleting under a running render would take it out of the daily quota and the
+    // one-render-per-poster guard while it keeps the CPU busy (same rule as DELETE /videos/:id).
+    const active = await client.query(
+      `SELECT 1 FROM video_jobs WHERE generation_id = $1 AND deleted_at IS NULL AND status IN ('queued', 'rendering') LIMIT 1`,
+      [id],
+    );
+    if (active.rowCount) {
+      throw new AppError('VIDEO_STILL_RENDERING', 'Video untuk gambar ini masih dibuat. Tunggu sampai selesai sebelum menghapusnya');
+    }
     await client.query('UPDATE gallery_items SET is_hidden = true WHERE generation_id = $1', [id]);
-    return [row.result_asset_id, row.thumbnail_asset_id];
+    // The reel is made from this poster: deleting the poster deletes its finished videos too.
+    const videos = await client.query<{ result_asset_id: string | null }>(
+      'UPDATE video_jobs SET deleted_at = now() WHERE generation_id = $1 AND deleted_at IS NULL RETURNING result_asset_id',
+      [id],
+    );
+    return [row.result_asset_id, row.thumbnail_asset_id, ...videos.rows.map((v) => v.result_asset_id)];
   });
   await softDeleteAssets(assets);
 }

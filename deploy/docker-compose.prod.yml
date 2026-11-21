@@ -1,0 +1,144 @@
+# Staging and production stack on one VPS. Run from this folder with the environment's own .env:
+#   docker compose -f docker-compose.prod.yml --env-file .env pull
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d --remove-orphans
+# One-off tools (seed, create-admin, models:smoke, benchmark):
+#   docker compose -f docker-compose.prod.yml --env-file .env run --rm tools npm run seed
+#
+# Nothing is exposed except Caddy on 80/443. PostgreSQL, Redis and the API are reachable only on the
+# internal network. Secrets live in .env on the server (see .env.production.example), never in git.
+name: sukamenak-${DEPLOY_ENV:-staging}
+
+x-backend-env: &backend-env
+  env_file: .env
+  environment:
+    NODE_ENV: production
+    DATABASE_URL: postgres://sukamenak:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/sukamenak
+    REDIS_URL: redis://redis:6379
+    QUEUE_DRIVER: bullmq
+    STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+    STORAGE_LOCAL_DIR: ./storage
+    # Caddy -> Nginx -> API.
+    TRUST_PROXY: '2'
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sukamenak
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: sukamenak
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U sukamenak -d sukamenak']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    <<: *backend-env
+    image: ${IMAGE_PREFIX:?set IMAGE_PREFIX in .env}/sukamenak-backend:${IMAGE_TAG:?set IMAGE_TAG}
+    command: ['node', 'dist/db/migrate.js', 'up']
+    restart: 'no'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *backend-env
+    image: ${IMAGE_PREFIX}/sukamenak-backend:${IMAGE_TAG}
+    restart: unless-stopped
+    volumes:
+      - storage:/app/backend/storage
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  worker:
+    <<: *backend-env
+    image: ${IMAGE_PREFIX}/sukamenak-backend:${IMAGE_TAG}
+    command: ['node', 'dist/worker.js']
+    restart: unless-stopped
+    # The worker has no HTTP server; the image's healthcheck is for the API only.
+    healthcheck:
+      disable: true
+    volumes:
+      - storage:/app/backend/storage
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  web:
+    image: ${IMAGE_PREFIX}/sukamenak-web:${IMAGE_TAG}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # Renders posters into reels. A separate container because a render owns the CPU for ~40-60 s and
+  # must never queue behind (or delay) the generation worker.
+  video-worker:
+    <<: *backend-env
+    image: ${IMAGE_PREFIX}/sukamenak-video-worker:${IMAGE_TAG}
+    command: ['node', 'backend/dist/videoWorker.js']
+    restart: unless-stopped
+    healthcheck:
+      disable: true
+    volumes:
+      - storage:/app/backend/storage
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+  tools:
+    <<: *backend-env
+    image: ${IMAGE_PREFIX}/sukamenak-backend-tools:${IMAGE_TAG}
+    profiles: ['tools']
+    volumes:
+      - storage:/app/backend/storage
+      - ./golden:/app/backend/golden:ro
+      - ./benchmark-results:/app/backend/benchmark-results
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  redisdata:
+  storage:
+  caddy_data:
+  caddy_config:

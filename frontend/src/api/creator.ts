@@ -9,6 +9,7 @@ import type {
   CreateGenerationRequest,
   CreateGenerationResponse,
   CreatePromptRequest,
+  CreateVideoResponse,
   DeleteMeResponse,
   DeletedResponse,
   GalleryItem,
@@ -23,6 +24,7 @@ import type {
   MyDataExport,
   MyGenerationsQuery,
   MyReferencesQuery,
+  MyVideosQuery,
   Page,
   PromptAnalysis,
   PromptDeletedResponse,
@@ -41,6 +43,8 @@ import type {
   UploadReferenceInput,
   PageParams,
   VersionResponse,
+  VideoJob,
+  VideoQuota,
 } from './types';
 
 // ---- system ---------------------------------------------------------------------------------------------
@@ -167,3 +171,22 @@ export const archiveGeneration = (id: string) => apiClient.post<Generation>(`/ge
 
 /** Soft delete: removes the files and hides gallery entries made from it. */
 export const deleteGeneration = (id: string) => apiClient.del<DeletedResponse>(`/generations/${id}`);
+
+// ---- video (poster -> 9:16 reel) ------------------------------------------------------------------------
+
+/**
+ * `POST /generations/:id/video` answers 202 `{ id, status: 'queued' }`: rendering happens in a separate
+ * worker and takes ~40-60 s. Poll with `getVideoJob`.
+ * Errors: `VIDEO_NOT_ELIGIBLE`, `VIDEO_ALREADY_RUNNING`, `VIDEO_DAILY_LIMIT_REACHED`, `VIDEO_DISABLED`.
+ */
+export const createVideo = (generationId: string, body: { duration_seconds?: number } = {}) =>
+  apiClient.post<CreateVideoResponse>(`/generations/${generationId}/video`, body);
+
+export const getVideoJob = (id: string, signal?: AbortSignal) => apiClient.get<VideoJob>(`/videos/${id}`, undefined, signal);
+
+export const listVideoJobs = (query?: MyVideosQuery, signal?: AbortSignal): Promise<Page<VideoJob>> =>
+  apiClient.getPage<VideoJob>('/videos', query, signal);
+
+export const getVideoQuota = (signal?: AbortSignal) => apiClient.get<VideoQuota>('/videos/quota', undefined, signal);
+
+export const deleteVideoJob = (id: string) => apiClient.del<DeletedResponse>(`/videos/${id}`);

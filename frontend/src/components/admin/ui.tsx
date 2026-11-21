@@ -67,7 +67,7 @@ export type NoticeKind = 'success' | 'error' | 'warning' | 'info';
 
 const NOTICE_STYLE: Record<NoticeKind, { box: string; icon: React.ReactNode }> = {
   success: { box: 'bg-blue-50 border-blue-200 text-[#2563EB]', icon: <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" /> },
-  info: { box: 'bg-[#F0F9FF] border-[#0284C7] text-[#0F172A]', icon: <Info className="w-4 h-4 shrink-0 text-[#0284C7]" aria-hidden="true" /> },
+  info: { box: 'bg-[#F0F9FF] border-[#0284C7] text-[#0F172A]', icon: <Info className="w-4 h-4 shrink-0 text-[#0369A1]" aria-hidden="true" /> },
   warning: { box: 'bg-amber-50 border-amber-300 text-amber-800', icon: <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" /> },
   error: { box: 'bg-red-50 border-red-200 text-red-700', icon: <XCircle className="w-4 h-4 shrink-0" aria-hidden="true" /> },
 };
@@ -162,7 +162,7 @@ export const EmptyState: React.FC<{ title: string; hint?: string; action?: React
   icon,
 }) => (
   <div className="flex flex-col items-center justify-center text-center gap-2 py-14 px-6">
-    {icon && <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">{icon}</div>}
+    {icon && <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center">{icon}</div>}
     <div className="text-sm font-extrabold text-[#0F172A]">{title}</div>
     {hint && <p className="text-xs text-slate-500 max-w-md leading-relaxed">{hint}</p>}
     {action}
@@ -204,7 +204,7 @@ export const Field: React.FC<{
   <div className={className}>
     <label htmlFor={htmlFor} className="block text-xs font-bold text-[#0F172A] mb-1.5">
       {label}
-      {required && <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>}
+      {required && <span className="text-red-600 ml-0.5" aria-hidden="true">*</span>}
     </label>
     {children}
     {hint && !error && <p id={`${htmlFor}-hint`} className="text-[11px] text-slate-500 mt-1 leading-relaxed">{hint}</p>}
@@ -224,7 +224,7 @@ const BADGE_TONES = {
   blue: 'bg-blue-50 text-[#2563EB] border-[#BFDBFE]',
   slate: 'bg-slate-100 text-slate-600 border-slate-300',
   amber: 'bg-amber-50 text-amber-700 border-amber-200',
-  red: 'bg-red-50 text-red-600 border-red-200',
+  red: 'bg-red-50 text-red-700 border-red-200',
   green: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   dark: 'bg-[#0F172A] text-white border-[#0F172A]',
 } as const;

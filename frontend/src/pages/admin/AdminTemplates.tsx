@@ -258,7 +258,7 @@ const TemplateEditor: React.FC<{
           <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
           <span>Kembali ke Daftar Template</span>
         </button>
-        <span className="text-xs font-bold text-slate-400">{id ? 'Mode Edit Template' : 'Mode Tambah Baru'}</span>
+        <span className="text-xs font-bold text-slate-500">{id ? 'Mode Edit Template' : 'Mode Tambah Baru'}</span>
       </div>
 
       <PageHeader
@@ -327,7 +327,7 @@ const TemplateEditor: React.FC<{
                     }`}
                   >
                     <div className="text-xs font-black">{r.label}</div>
-                    <div className="text-[9px] text-slate-400">{r.sub}</div>
+                    <div className="text-[9px] text-slate-500">{r.sub}</div>
                   </button>
                 ))}
               </div>
@@ -379,7 +379,7 @@ const TemplateEditor: React.FC<{
 
           {/* RIGHT: PREVIEW, STATUS, READINESS */}
           <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-24">
-            <span className="text-xs font-black uppercase tracking-wider text-slate-400 block">
+            <span className="text-xs font-black uppercase tracking-wider text-slate-500 block">
               Live Preview <span className="text-[#2563EB]">Tampilan Template</span>
             </span>
             <div className="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-md space-y-4">
@@ -387,7 +387,7 @@ const TemplateEditor: React.FC<{
                 {preview ? (
                   <img src={preview} alt="Preview Template" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="text-center text-slate-400 text-xs space-y-1 p-4">
+                  <div className="text-center text-slate-500 text-xs space-y-1 p-4">
                     <ImageIcon className="w-8 h-8 mx-auto" aria-hidden="true" />
                     <div>{id ? 'Belum ada gambar preview' : 'Simpan template untuk mengunggah gambar preview'}</div>
                   </div>
@@ -413,7 +413,7 @@ const TemplateEditor: React.FC<{
                     {uploading ? <Spinner className="w-3.5 h-3.5" /> : <Upload className="w-3.5 h-3.5" aria-hidden="true" />}
                     <span>{preview ? 'Ganti Gambar Preview' : 'Unggah Gambar Preview'}</span>
                   </button>
-                  <p className="text-[11px] text-slate-400">JPEG, PNG, atau WebP. Data lokasi (EXIF) dihapus otomatis oleh server.</p>
+                  <p className="text-[11px] text-slate-500">JPEG, PNG, atau WebP. Data lokasi (EXIF) dihapus otomatis oleh server.</p>
                 </>
               )}
             </div>
@@ -602,7 +602,7 @@ export const AdminTemplates: React.FC = () => {
 
       <div className="bg-white/85 backdrop-blur-md rounded-3xl border border-slate-200/90 p-5 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" aria-hidden="true" />
+          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" aria-hidden="true" />
           <input type="search" value={search} onChange={(e) => setFilter(() => setSearch(e.target.value))} placeholder="Cari nama template..." aria-label="Cari template" className={`${inputCls} !pl-10`} />
         </div>
         <div className="flex flex-wrap gap-2">
@@ -650,7 +650,7 @@ export const AdminTemplates: React.FC = () => {
                     <span className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-white/95 text-[10px] font-black text-[#2563EB] shadow-xs">{CATEGORY_LABELS[tpl.category]}</span>
                   </div>
                   <h3 className="text-sm font-bold text-[#0F172A] line-clamp-1">{tpl.name}</h3>
-                  <p className="text-[11px] font-mono text-slate-400 line-clamp-1">{tpl.slug}</p>
+                  <p className="text-[11px] font-mono text-slate-500 line-clamp-1">{tpl.slug}</p>
                   <p className="text-xs text-slate-500 mt-1">
                     {tpl.slot_count} slot &bull; {tpl.zone_count} zona &bull; {tpl.aspect_ratio}
                   </p>

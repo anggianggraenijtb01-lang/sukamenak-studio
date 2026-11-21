@@ -218,7 +218,7 @@ export const SavedPrompts: React.FC<SavedPromptsProps> = ({ onUseInStudio, onLoa
               <div className="space-y-1.5 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="text-sm font-black text-[#0F172A] break-words">{p.title}</h3>
-                  <span className="text-[10px] text-slate-400 whitespace-nowrap">{relativeTime(p.updated_at)}</span>
+                  <span className="text-[10px] text-slate-500 whitespace-nowrap">{relativeTime(p.updated_at)}</span>
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed line-clamp-4 whitespace-pre-wrap break-words">{p.body}</p>
               </div>

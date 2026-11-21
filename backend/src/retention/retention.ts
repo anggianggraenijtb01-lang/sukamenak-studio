@@ -10,11 +10,14 @@ export interface RetentionResult {
   purgedGenerations: number;
   /** Files of already soft-deleted assets that were still in storage. */
   orphanFiles: number;
+  /** Video jobs past VIDEO_RETENTION_DAYS (30 by default: a reel is far larger than a poster). */
+  expiredVideos: number;
 }
 
 export interface RetentionOptions {
   now?: Date;
   generationDays?: number;
+  videoDays?: number;
   batchSize?: number;
 }
 
@@ -29,6 +32,7 @@ const LOCK_KEY = 'retention:purge';
 export async function runRetention(opts: RetentionOptions = {}): Promise<RetentionResult | null> {
   const now = opts.now ?? new Date();
   const generationDays = opts.generationDays ?? env.RETENTION_GENERATION_DAYS;
+  const videoDays = opts.videoDays ?? env.VIDEO_RETENTION_DAYS;
   const batch = opts.batchSize ?? 500;
 
   const client = await pool.connect();
@@ -36,7 +40,7 @@ export async function runRetention(opts: RetentionOptions = {}): Promise<Retenti
     const { rows } = await client.query<{ locked: boolean }>('SELECT pg_try_advisory_lock(hashtextextended($1, 0)) AS locked', [LOCK_KEY]);
     if (!rows[0]?.locked) return null;
     try {
-      const result: RetentionResult = { expiredReferences: 0, purgedGenerations: 0, orphanFiles: 0 };
+      const result: RetentionResult = { expiredReferences: 0, purgedGenerations: 0, orphanFiles: 0, expiredVideos: 0 };
 
       for (;;) {
         const expired = await query<{ id: string; asset_id: string }>(
@@ -74,6 +78,22 @@ export async function runRetention(opts: RetentionOptions = {}): Promise<Retenti
         const removed = await purgeDeletedAssetFiles(batch);
         result.orphanFiles += removed;
         if (removed < batch) break;
+      }
+
+      // Rendered reels expire much sooner than the generations they came from: an mp4 is ~2 MB.
+      for (;;) {
+        const expired = await query<{ id: string; result_asset_id: string | null }>(
+          `UPDATE video_jobs SET deleted_at = $1
+            WHERE id IN (
+              SELECT id FROM video_jobs
+               WHERE deleted_at IS NULL AND created_at < $1::timestamptz - make_interval(days => $2)
+               ORDER BY created_at LIMIT $3)
+            RETURNING id, result_asset_id`,
+          [now, videoDays, batch],
+        );
+        if (expired.length === 0) break;
+        await softDeleteAssets(expired.map((r) => r.result_asset_id));
+        result.expiredVideos += expired.length;
       }
 
       logger.info({ ...result }, 'retention run finished');

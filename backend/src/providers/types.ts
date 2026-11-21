@@ -1,5 +1,5 @@
 export type Capability = 'vision' | 'text' | 't2i' | 'i2i';
-export type ProviderName = 'mock' | 'openai_compat' | 'gemini' | 'fal';
+export type ProviderName = 'mock' | 'openai_compat' | 'gemini' | 'fal' | 'cloudflare';
 
 /** Row of `model_configs` as providers see it. `api_key_env` is a variable NAME, never a key. */
 export interface ModelConfigRecord {

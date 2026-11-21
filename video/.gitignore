@@ -1,0 +1,6 @@
+node_modules
+# Remotion downloads Chrome Headless Shell (~303 MB) here; never commit it.
+node_modules/.remotion
+# Local render output.
+out
+*.mp4

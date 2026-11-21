@@ -69,7 +69,7 @@ const TIMELINE_LABEL = { ok: 'OK', degraded: 'Terdegradasi', failed: 'Gagal', st
 
 const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div className="flex justify-between gap-4 py-1.5 border-b border-slate-50 text-xs">
-    <span className="text-slate-400 shrink-0">{label}</span>
+    <span className="text-slate-500 shrink-0">{label}</span>
     <span className="font-bold text-[#0F172A] text-right break-words min-w-0">{children}</span>
   </div>
 );
@@ -152,7 +152,7 @@ const TraceModal: React.FC<{ id: string; onClose: () => void; onChanged: (messag
               {g.thumbnail_url || g.result_url ? (
                 <img src={fileUrl(g.thumbnail_url ?? g.result_url)!} alt="Hasil generasi" className="w-full rounded-2xl border border-slate-200 object-cover" />
               ) : (
-                <div className="aspect-[4/5] rounded-2xl border border-dashed border-slate-200 flex items-center justify-center text-xs text-slate-400 text-center p-4">Tidak ada gambar hasil</div>
+                <div className="aspect-[4/5] rounded-2xl border border-dashed border-slate-200 flex items-center justify-center text-xs text-slate-500 text-center p-4">Tidak ada gambar hasil</div>
               )}
             </div>
           </div>
@@ -162,7 +162,7 @@ const TraceModal: React.FC<{ id: string; onClose: () => void; onChanged: (messag
             {g.timeline.length === 0 ? (
               <p className="text-xs text-slate-500">Belum ada tahap tercatat.</p>
             ) : (
-              <div className="overflow-x-auto rounded-2xl border border-slate-200">
+              <div className="overflow-x-auto rounded-2xl border border-slate-200" tabIndex={0} role="region" aria-label="Tabel tahap pipeline (geser untuk melihat kolom lain)">
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="bg-[#F8FAFC] border-b border-slate-200 text-slate-600 font-bold">
@@ -409,7 +409,7 @@ export const AdminLogs: React.FC = () => {
         {logs.isError && !logs.data && <ErrorState error={logs.error} onRetry={() => void logs.refetch()} title="Log tidak dapat dimuat" />}
         {logs.data && items.length === 0 && <EmptyState icon={<Terminal className="w-6 h-6" />} title="Tidak ada generasi yang cocok" hint="Ubah atau atur ulang filter." />}
         {items.length > 0 && (
-          <div className={`overflow-x-auto ${logs.isFetching ? 'opacity-70' : ''}`}>
+          <div className={`overflow-x-auto ${logs.isFetching ? 'opacity-70' : ''}`} tabIndex={0} role="region" aria-label="Tabel log generasi (geser untuk melihat kolom lain)">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="bg-[#F8FAFC] border-b border-slate-200 text-slate-600 font-bold">
@@ -427,7 +427,7 @@ export const AdminLogs: React.FC = () => {
                   <tr key={log.id} className="hover:bg-blue-50/30 transition-colors">
                     <td className="py-3.5 px-5 font-mono text-[11px] text-slate-500">
                       {formatDateTime(log.created_at)}
-                      <span className="block text-slate-400">#{shortId(log.id)}</span>
+                      <span className="block text-slate-500">#{shortId(log.id)}</span>
                     </td>
                     <td className="py-3.5 px-5">
                       <div className="font-extrabold text-[#0F172A]">{log.user?.name ?? 'Akun dihapus'}</div>

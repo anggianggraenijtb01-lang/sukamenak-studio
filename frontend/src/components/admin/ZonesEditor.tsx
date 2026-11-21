@@ -234,7 +234,7 @@ export const ZonesEditor: React.FC<{
               {template.slots.length === 0 ? 'Tambahkan slot terlebih dahulu, lalu buat zona teks untuk slot overlay.' : 'Belum ada zona teks.'}
             </p>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabel zona teks (geser untuk melihat kolom lain)">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="bg-[#F8FAFC] border-b border-slate-200 text-slate-600 font-bold">

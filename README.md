@@ -14,9 +14,14 @@ reach a browser, a response, a log line or an error message. Several automated c
 |------|------------|
 | [`backend/`](backend/README.md) | Node 22, Express 5, TypeScript, PostgreSQL 16, BullMQ. API, prompt engine, generation pipeline, admin API. |
 | [`frontend/`](frontend) | Vite 6, React 19, TypeScript, Tailwind 4, TanStack Query. Creator and admin UI on the real API. |
+| [`video/`](video/README.md) | Remotion renderer: turns a finished poster into a 9:16 reel. Separate worker, separate image. |
+| [`docs/VIDEO.md`](docs/VIDEO.md) | Video feature: endpoints, configuration, retention. |
+| [`docs/E2E.md`](docs/E2E.md) | Playwright (creator and admin flows) and the k6 smoke test. |
 | [`docs/BACKEND_PLAN.md`](docs/BACKEND_PLAN.md) | The backend spec and the delivery phases (A to D). |
+| [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) | The plan from here to launch (phases E to J): real providers, real core prompts, deploy, beta. |
 | [`backend/docs/API.md`](backend/docs/API.md) | Endpoint reference for the frontend. |
 | `docker-compose.yml` | Local PostgreSQL (host port 5433), Redis and MinIO. Development only. |
+| [`deploy/`](deploy/README.md) | Staging/production stack (Caddy, Nginx, API, worker), deploy verification and backups. |
 | `.github/workflows/ci.yml` | CI: backend, frontend and the prompt-leak checks. |
 | `scratch/tempe_eval/` | Sample photos (tempe, packaging) from the initial commit. Nothing in the code references them. |
 

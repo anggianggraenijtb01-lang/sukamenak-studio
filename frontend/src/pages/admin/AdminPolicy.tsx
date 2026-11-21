@@ -128,7 +128,7 @@ const PolicyForm: React.FC<{ policy: ContentPolicy; onSaved: (p: ContentPolicy) 
           <p className="text-xs text-slate-500 mt-1">Diblokir otomatis pada prompt, catatan, dan judul</p>
         </div>
         <div className="bg-gradient-to-br from-sky-50/80 via-white to-sky-50/30 rounded-3xl border-2 border-[#BAE6FD] p-5 shadow-xs">
-          <span className="text-[10px] font-black uppercase tracking-wider text-[#0284C7] block">Tingkat Moderasi</span>
+          <span className="text-[10px] font-black uppercase tracking-wider text-[#0369A1] block">Tingkat Moderasi</span>
           <div className="text-3xl font-black text-[#0F172A] mt-2">{LEVELS.find((l) => l.id === level)?.title}</div>
           <p className="text-xs text-slate-500 mt-1">Berlaku mulai permintaan generasi berikutnya</p>
         </div>
@@ -155,7 +155,7 @@ const PolicyForm: React.FC<{ policy: ContentPolicy; onSaved: (p: ContentPolicy) 
                   <input type="radio" name="moderation" value={l.id} checked={level === l.id} onChange={() => setLevel(l.id)} disabled={pending} className="mt-0.5 accent-[#2563EB]" />
                   <span>
                     <span className="block text-xs font-bold text-[#0F172A]">{l.title}</span>
-                    <span className="block text-xs text-slate-500 leading-relaxed">{l.desc}</span>
+                    <span className="block text-xs text-slate-600 leading-relaxed">{l.desc}</span>
                   </span>
                 </label>
               ))}
@@ -226,13 +226,13 @@ const PolicyForm: React.FC<{ policy: ContentPolicy; onSaved: (p: ContentPolicy) 
                 <li key={term} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-xs font-medium text-slate-700">
                   <span>{term}</span>
                   <button type="button" onClick={() => setTerms((p) => p.filter((t) => t !== term))} disabled={pending} className="hover:text-red-600 transition-colors cursor-pointer" title="Hapus kata ini" aria-label={`Hapus istilah ${term}`}>
-                    <Trash2 className="w-3 h-3 text-slate-400 hover:text-red-600" aria-hidden="true" />
+                    <Trash2 className="w-3 h-3 text-slate-500 hover:text-red-600" aria-hidden="true" />
                   </button>
                 </li>
               ))}
             </ul>
           )}
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-slate-500">
             {terms.length} / {MAX_TERMS} istilah &bull; terakhir diperbarui {formatDateTime(policy.updated_at)}
           </p>
         </section>

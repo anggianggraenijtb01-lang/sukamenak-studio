@@ -1,0 +1,166 @@
+name: Deploy
+
+# Staging: automatically after CI passes on a push to main.
+# Production: manually (Actions > Deploy > Run workflow > production). Give the "production" GitHub
+# environment required reviewers so a production deploy needs a second person.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [staging, production]
+        default: staging
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: deploy-${{ inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+env:
+  # workflow_run: deploy exactly the commit CI tested; manual: the selected ref.
+  SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+  TARGET: ${{ inputs.environment || 'staging' }}
+
+jobs:
+  images:
+    name: build and push images
+    # The repository is public: a workflow_run from a fork PR (even one from a branch named "main") must never
+    # reach a job that has deploy secrets. Only a green CI run of a push to this repository counts.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      prefix: ${{ steps.prefix.outputs.prefix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      - id: prefix
+        run: echo "prefix=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      # Third-party actions are pinned to a commit (this job holds a token that can push images).
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Backend runtime image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: backend/Dockerfile
+          target: runtime
+          build-args: GIT_SHA=${{ env.SHA }}
+          tags: ${{ steps.prefix.outputs.prefix }}/sukamenak-backend:${{ env.SHA }}
+          push: true
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Backend tools image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: backend/Dockerfile
+          target: tools
+          tags: ${{ steps.prefix.outputs.prefix }}/sukamenak-backend-tools:${{ env.SHA }}
+          push: true
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Web image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: frontend/Dockerfile
+          build-args: GIT_SHA=${{ env.SHA }}
+          tags: ${{ steps.prefix.outputs.prefix }}/sukamenak-web:${{ env.SHA }}
+          push: true
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+      # ~300 MB of Chrome Headless Shell, so it gets its own cache scope.
+      - name: Video worker image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: video/Dockerfile
+          build-args: GIT_SHA=${{ env.SHA }}
+          tags: ${{ steps.prefix.outputs.prefix }}/sukamenak-video-worker:${{ env.SHA }}
+          push: true
+          cache-from: type=gha,scope=video
+          cache-to: type=gha,mode=max,scope=video
+
+  deploy:
+    name: deploy to ${{ inputs.environment || 'staging' }}
+    needs: images
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Per-environment secrets and variables (Settings > Environments):
+    #   secrets DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS; variables DEPLOY_HOST, DEPLOY_USER, DEPLOY_PATH, DEPLOY_URL
+    environment:
+      name: ${{ inputs.environment || 'staging' }}
+      url: ${{ vars.DEPLOY_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Copy the deploy files and roll out
+        env:
+          HOST: ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          PREFIX: ${{ needs.images.outputs.prefix }}
+        run: |
+          ssh_cmd="ssh -i $HOME/.ssh/deploy_key -o IdentitiesOnly=yes"
+          rsync -a -e "$ssh_cmd" deploy/docker-compose.prod.yml deploy/Caddyfile deploy/backup.sh "$HOST:$DEPLOY_PATH/"
+          $ssh_cmd "$HOST" "cd '$DEPLOY_PATH' && \
+            export IMAGE_PREFIX='$PREFIX' IMAGE_TAG='$SHA' && \
+            docker compose -f docker-compose.prod.yml --env-file .env pull --quiet && \
+            docker compose -f docker-compose.prod.yml --env-file .env up -d --remove-orphans && \
+            docker image prune -f"
+
+      - name: Verify the deploy (health, commit, served bundle)
+        run: node deploy/verify-deploy.mjs --url "${{ vars.DEPLOY_URL }}" --commit "$SHA"
+
+      # Phase H smoke, against the environment that was just deployed. Read-only: it never creates a
+      # generation, so it costs nothing. A missing demo account just skips the authenticated requests.
+      - name: Smoke test the deployed environment (k6)
+        env:
+          BASE: ${{ vars.DEPLOY_URL }}/api/v1
+          DEMO_EMAIL: ${{ vars.SMOKE_DEMO_EMAIL }}
+          DEMO_PASSWORD: ${{ secrets.SMOKE_DEMO_PASSWORD }}
+        run: |
+          docker run --rm -i --network host \
+            -e BASE -e DEMO_EMAIL -e DEMO_PASSWORD \
+            -v "$PWD/scripts:/scripts:ro" \
+            grafana/k6:0.54.0 run /scripts/k6-smoke.js

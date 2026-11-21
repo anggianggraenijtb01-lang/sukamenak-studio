@@ -16,9 +16,9 @@ export const RemarksField: React.FC<RemarksFieldProps> = ({ value, onChange, err
   <div>
     <div className="flex items-center justify-between mb-1.5">
       <label htmlFor="studio-remarks" className="text-xs font-bold text-[#0F172A]">
-        Deskripsi Visual &amp; Petunjuk Prompt <span className="font-medium text-slate-400">(opsional)</span>
+        Deskripsi Visual &amp; Petunjuk Prompt <span className="font-medium text-slate-500">(opsional)</span>
       </label>
-      <span className="text-[10px] text-slate-400 font-mono">{value.length} Karakter</span>
+      <span className="text-[10px] text-slate-500 font-mono">{value.length} Karakter</span>
     </div>
     <textarea
       id="studio-remarks"

@@ -89,7 +89,7 @@ describe('retention job', () => {
   it('is idempotent and never touches seed assets', async () => {
     await runRetention();
     const again = await runRetention();
-    expect(again).toEqual({ expiredReferences: 0, purgedGenerations: 0, orphanFiles: 0 });
+    expect(again).toEqual({ expiredReferences: 0, purgedGenerations: 0, orphanFiles: 0, expiredVideos: 0 });
     const seed = (await pool.query<{ n: number }>("SELECT count(*)::int AS n FROM assets WHERE storage_key LIKE 'seed/%' AND (deleted_at IS NOT NULL OR file_deleted_at IS NOT NULL)")).rows[0]!;
     expect(seed.n).toBe(0);
   });

@@ -147,6 +147,14 @@ describe('StudioGenerator', () => {
     await waitFor(() => expect(document.querySelector('[data-step-state="running"]')).toBeTruthy());
   });
 
+  it('opens in the mode a deep link asks for, when the template allows it', async () => {
+    stubBackend();
+    renderStudio('/creator/studio?template=poster-promo-produk&mode=t2i');
+    const t2i = await screen.findByRole('radio', { name: /Teks ke Gambar/ });
+    await waitFor(() => expect(t2i.getAttribute('aria-checked')).toBe('true'));
+    expect(screen.getByRole('radio', { name: /Foto ke Gambar/ }).getAttribute('aria-checked')).toBe('false');
+  });
+
   it('shows a clear state for DAILY_LIMIT_REACHED answered by the server and keeps the form filled', async () => {
     stubBackend({
       generationAnswer: () => res(429, { status: 'error', message: 'x', error_code: 'DAILY_LIMIT_REACHED' }),

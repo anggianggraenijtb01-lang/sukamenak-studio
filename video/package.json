@@ -1,0 +1,27 @@
+{
+  "name": "sukamenak-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Remotion renderer for Sukamenak Studio: turns a finished poster generation into a 9:16 reel.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "browser": "remotion browser ensure",
+    "render": "node render.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.545",
+    "@remotion/cli": "4.0.545",
+    "@remotion/renderer": "4.0.545",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.545"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "typescript": "5.9.3"
+  }
+}

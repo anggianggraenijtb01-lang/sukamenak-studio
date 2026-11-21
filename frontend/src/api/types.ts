@@ -80,7 +80,7 @@ export type TextAlign = 'left' | 'center' | 'right';
 export type TutorialLevel = 'pemula' | 'menengah' | 'mahir';
 export type GenerationStatus = 'queued' | 'running' | 'done' | 'failed';
 export type ProgressStep = 'analysis' | 'compose' | 'generate' | 'composite' | 'done';
-export type ModelProvider = 'mock' | 'openai_compat' | 'gemini' | 'fal';
+export type ModelProvider = 'mock' | 'openai_compat' | 'gemini' | 'fal' | 'cloudflare';
 export type ModelCapability = 'vision' | 'text' | 't2i' | 'i2i';
 export type ModerationLevel = 'lenient' | 'standard' | 'strict';
 export type PromptSource = 'manual' | 'imported';
@@ -482,6 +482,47 @@ export interface Generation {
 export interface MyGenerationsQuery extends PageParams {
   status?: GenerationStatus;
   archived?: boolean | 'all';
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Video (poster -> 9:16 reel). See backend/docs/API.md section 2.4.
+// ---------------------------------------------------------------------------------------------------
+
+export type VideoStatus = 'queued' | 'rendering' | 'done' | 'failed';
+
+export interface VideoJob {
+  id: Uuid;
+  generation_id: Uuid;
+  status: VideoStatus;
+  composition: string;
+  duration_seconds: number;
+  width: number;
+  height: number;
+  fps: number;
+  /** 0-100 while rendering. */
+  progress: number;
+  /** Signed, expiring URL. Set only when `status` is `done`. */
+  video_url: string | null;
+  thumbnail_url: string | null;
+  bytes: number | null;
+  render_ms: number | null;
+  error_code: string | null;
+  created_at: IsoDateTime;
+  finished_at: IsoDateTime | null;
+}
+
+export interface CreateVideoResponse {
+  id: Uuid;
+  status: VideoStatus;
+}
+
+export interface VideoQuota {
+  limit: number;
+  used: number;
+}
+
+export interface MyVideosQuery extends PageParams {
+  generation_id?: Uuid;
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -926,6 +967,8 @@ export interface AdminGenerationFilters {
   to?: DateString;
   degraded?: boolean;
   flagged?: boolean;
+  /** true: finished, not deleted or purged, image still stored (usable for gallery curation). */
+  available?: boolean;
 }
 
 export interface AdminGenerationsQuery extends AdminGenerationFilters, PageParams {}

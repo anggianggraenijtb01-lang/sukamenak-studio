@@ -63,19 +63,19 @@ export const AdminLayout: React.FC = () => {
           - Middle: Wide, clean negative space (Completely empty).
           - Right: Circular avatar (initial) with the signed-in admin's name.
       ───────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 bg-white border-b border-[#E2E8F0] px-6 lg:px-8 h-18 flex items-center justify-between shadow-2xs">
+      <header className="sticky top-0 z-40 bg-white border-b border-[#E2E8F0] px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-2 shadow-2xs">
         
         {/* Left: Crisp 'Sukamenak Studio' wordmark */}
         <div className="flex items-center gap-3">
           <Link to="/" className="flex items-center gap-2.5 select-none group">
             <LogoIcon className="w-9 h-9 group-hover:scale-105 transition-transform" color="#2563EB" />
             <div className="leading-tight">
-              <span className="font-black text-xl tracking-tight text-[#0F172A]">
+              <span className="font-black text-base sm:text-xl tracking-tight text-[#0F172A]">
                 Sukamenak <span className="text-[#2563EB]">Studio</span>
               </span>
             </div>
           </Link>
-          <span className="ml-2 px-2.5 py-0.5 rounded-full bg-[#0F172A] text-white text-[10px] font-mono font-bold uppercase tracking-wider">
+          <span className="ml-0 sm:ml-2 px-2.5 py-0.5 rounded-full bg-[#0F172A] text-white text-[10px] font-mono font-bold uppercase tracking-wider">
             ADMIN
           </span>
         </div>
@@ -89,16 +89,17 @@ export const AdminLayout: React.FC = () => {
             type="button"
             onClick={() => setShowAdminMenu(!showAdminMenu)}
             aria-haspopup="menu"
+            aria-label={`Menu akun ${displayName}`}
             aria-expanded={showAdminMenu}
             className="flex items-center gap-2.5 pl-2 pr-3.5 py-1.5 rounded-full bg-white border border-[#CBD5E1] hover:border-[#2563EB] shadow-xs hover:shadow-md transition-all cursor-pointer group"
           >
             <div className="w-8 h-8 rounded-full bg-[#0F172A] text-white flex items-center justify-center text-xs font-black" aria-hidden="true">
               {initial}
             </div>
-            <span className="text-xs sm:text-sm font-bold text-[#0F172A] group-hover:text-[#2563EB] transition-colors">
+            <span className="hidden sm:inline text-xs sm:text-sm font-bold text-[#0F172A] group-hover:text-[#2563EB] transition-colors">
               {displayName}
             </span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#2563EB] transition-colors" />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-500 group-hover:text-[#2563EB] transition-colors" />
           </button>
 
           {showAdminMenu && (
@@ -153,7 +154,7 @@ export const AdminLayout: React.FC = () => {
                       : 'text-slate-600 hover:bg-[#EFF6FF] hover:text-[#2563EB]'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                  <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
                   <span className="truncate">{item.label}</span>
                 </Link>
               );
@@ -200,9 +201,9 @@ export const AdminLayout: React.FC = () => {
 
             {/* Column 2: Quick Navigation */}
             <div className="md:col-span-3 space-y-3">
-              <h4 className="text-xs font-black uppercase tracking-wider text-[#2563EB]">
+              <h2 className="text-xs font-black uppercase tracking-wider text-[#60A5FA]">
                 NAVIGASI ADMIN
-              </h4>
+              </h2>
               <ul className="space-y-2 text-xs sm:text-sm text-slate-300">
                 <li>
                   <Link to="/admin/dashboard" className="hover:text-white transition-colors">
@@ -225,9 +226,9 @@ export const AdminLayout: React.FC = () => {
 
             {/* Column 3: Technical Help */}
             <div className="md:col-span-3 space-y-3">
-              <h4 className="text-xs font-black uppercase tracking-wider text-[#2563EB]">
+              <h2 className="text-xs font-black uppercase tracking-wider text-[#60A5FA]">
                 BANTUAN TEKNIS
-              </h4>
+              </h2>
               <div className="flex flex-col gap-2 text-xs text-slate-300">
                 <a
                   href="https://wa.me/6281234567890"

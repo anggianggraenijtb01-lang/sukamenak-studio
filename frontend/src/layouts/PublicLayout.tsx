@@ -126,9 +126,9 @@ export const PublicLayout: React.FC = () => {
 
             {/* Column 2 (Quick Navigation) */}
             <div className="md:col-span-3 space-y-3">
-              <h4 className="text-xs font-black uppercase tracking-wider text-[#2563EB]">
+              <h2 className="text-xs font-black uppercase tracking-wider text-[#60A5FA]">
                 NAVIGASI RINGKAS
-              </h4>
+              </h2>
               <ul className="space-y-2.5 text-xs sm:text-sm text-slate-300">
                 <li>
                   <a
@@ -180,9 +180,9 @@ export const PublicLayout: React.FC = () => {
 
             {/* Column 3 (Direct Contact Channels) */}
             <div className="md:col-span-4 space-y-3">
-              <h4 className="text-xs font-black uppercase tracking-wider text-[#2563EB]">
+              <h2 className="text-xs font-black uppercase tracking-wider text-[#60A5FA]">
                 HUBUNGI KAMI
-              </h4>
+              </h2>
               <div className="flex flex-col gap-2.5 text-xs text-slate-300">
                 <a
                   href="https://wa.me/6281234567890"
