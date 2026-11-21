@@ -29,6 +29,8 @@ const errorsToProviderError = (payload: Record<string, unknown>): ProviderError 
   // 3040: capacity temporarily exceeded; worth another attempt.
   if (code === 3040) return new ProviderError('PROVIDER_RATE_LIMITED');
   if (code === 10000 || code === 10001) return new ProviderError('PROVIDER_AUTH');
+  // 3030: the output filter flagged this prompt/image combination ("choose another"); the same input will be flagged again.
+  if (code === 3030) return new ProviderError('PROVIDER_CONTENT_BLOCKED');
   return new ProviderError('PROVIDER_BAD_REQUEST');
 };
 

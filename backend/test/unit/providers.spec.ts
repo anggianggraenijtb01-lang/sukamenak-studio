@@ -488,6 +488,32 @@ describe('cloudflare adapter', () => {
     expect(e3.message).not.toContain('SECRET');
   });
 
+  it('reports the safety filter flagging the output (code 3030) as blocked content, not a malformed request', async () => {
+    // Observed live on flux-2-klein: HTTP 400 with this body for some prompt/image combinations.
+    const flaggedBody = { success: false, errors: [{ code: 3030, message: `AiError: Your output has been flagged. Please choose another prompt / input image combination ${KEY} ${PROMPT}` }] };
+    const asHttp400 = fakeFetch(() => json(flaggedBody, 400));
+    const e1 = (await createCloudflareProvider({ fetch: asHttp400.fetch })
+      .generateImage!(ccfg({ capability: 'i2i', model_id: '@cf/black-forest-labs/flux-2-klein-4b' }), genInput())
+      .catch((e: unknown) => e)) as ProviderError;
+    expect(e1).toMatchObject({ code: 'PROVIDER_CONTENT_BLOCKED', transient: false });
+    expect(e1.message).not.toContain('SECRET');
+    expect(e1.message).not.toContain(PROMPT);
+
+    // Cloudflare also answers 200 + success:false for some failures; the code decides there too.
+    const asHttp200 = fakeFetch(() => json(flaggedBody));
+    const e2 = (await createCloudflareProvider({ fetch: asHttp200.fetch })
+      .generateImage!(ccfg(), genInput({ mode: 't2i', references: [] }))
+      .catch((e: unknown) => e)) as ProviderError;
+    expect(e2.code).toBe('PROVIDER_CONTENT_BLOCKED');
+
+    // Any other 400 stays a bad request.
+    const other = fakeFetch(() => json({ success: false, errors: [{ code: 5006, message: 'invalid input' }] }, 400));
+    const e3 = (await createCloudflareProvider({ fetch: other.fetch })
+      .generateImage!(ccfg(), genInput({ mode: 't2i', references: [] }))
+      .catch((e: unknown) => e)) as ProviderError;
+    expect(e3.code).toBe('PROVIDER_BAD_REQUEST');
+  });
+
   it('refuses to call anything when the response carries no image', async () => {
     const bad = fakeFetch(() => json({ success: true, result: {} }));
     const err = (await createCloudflareProvider({ fetch: bad.fetch })
