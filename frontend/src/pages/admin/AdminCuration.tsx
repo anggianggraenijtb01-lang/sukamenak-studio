@@ -472,7 +472,7 @@ export const AdminCuration: React.FC = () => {
           <p className="text-xs text-slate-500 mt-1">Ditampilkan di etalase inspirasi publik</p>
         </div>
         <div className="bg-gradient-to-br from-sky-50/80 via-white to-sky-50/30 rounded-3xl border-2 border-[#BAE6FD] p-5 shadow-xs">
-          <span className="text-[10px] font-black uppercase tracking-wider text-[#0284C7] block">Item Tersembunyi</span>
+          <span className="text-[10px] font-black uppercase tracking-wider text-[#0369A1] block">Item Tersembunyi</span>
           <div className="text-3xl font-black text-[#0F172A] mt-2">
             {formatNumber(totalHidden.data?.meta.total)} <span className="text-xs font-semibold text-slate-500">Tidak Tampil</span>
           </div>
@@ -489,7 +489,7 @@ export const AdminCuration: React.FC = () => {
 
       <div className="bg-white/85 backdrop-blur-md rounded-3xl border border-slate-200/90 p-5 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" aria-hidden="true" />
+          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" aria-hidden="true" />
           <input type="search" value={search} onChange={(e) => setFilter(() => setSearch(e.target.value))} placeholder="Cari judul..." aria-label="Cari item galeri" className={`${inputCls} !pl-10`} />
         </div>
         <div className="flex flex-wrap gap-2">

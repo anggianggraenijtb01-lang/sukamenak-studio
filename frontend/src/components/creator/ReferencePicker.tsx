@@ -56,7 +56,7 @@ export const ReferencePicker: React.FC<ReferencePickerProps> = ({
     <div>
       <div className="flex items-center justify-between mb-1.5 gap-3">
         <span className="text-xs font-bold text-[#0F172A]">Foto Referensi dari Kamera HP</span>
-        <span className="text-[10px] font-mono text-slate-400" aria-label={`${used} dari ${maxRefs} foto referensi dipakai`}>
+        <span className="text-[10px] font-mono text-slate-500" aria-label={`${used} dari ${maxRefs} foto referensi dipakai`}>
           {used}/{maxRefs} foto
         </span>
       </div>
@@ -122,7 +122,7 @@ export const ReferencePicker: React.FC<ReferencePickerProps> = ({
           <span className="text-xs font-black text-[#2563EB]">Klik untuk Ambil Foto Kamera HP</span>
           <span className="text-xs text-slate-500"> atau seret gambar ke sini</span>
         </div>
-        <span className="text-[10px] text-slate-400 font-medium">Format JPG, PNG, atau WebP, maksimal 8 MB (lokasi GPS pada foto dihapus otomatis)</span>
+        <span className="text-[10px] text-slate-500 font-medium">Format JPG, PNG, atau WebP, maksimal 8 MB (lokasi GPS pada foto dihapus otomatis)</span>
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -135,7 +135,7 @@ export const ReferencePicker: React.FC<ReferencePickerProps> = ({
           <Images className="w-3.5 h-3.5" />
           <span>Pilih dari Pustaka Referensi</span>
         </button>
-        <span className="text-[10px] text-slate-400">Tanpa unggah ulang: pustaka admin atau unggahan Anda sebelumnya.</span>
+        <span className="text-[10px] text-slate-500">Tanpa unggah ulang: pustaka admin atau unggahan Anda sebelumnya.</span>
       </div>
 
       {problem && (

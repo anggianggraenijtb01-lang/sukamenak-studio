@@ -83,7 +83,7 @@ export const CompactnessBar: React.FC<CompactnessProps> = ({ state }) => {
       >
         <div className="h-full bg-[#2563EB] rounded-full transition-all duration-300" style={{ width: `${hasText ? view.score : 0}%` }} />
       </div>
-      <div className="flex justify-between gap-3 text-[10px] text-slate-400 font-medium">
+      <div className="flex justify-between gap-3 text-[10px] text-slate-500 font-medium">
         <span>{hasText ? compactnessLabel(view.score) : 'Ringkas & Padat'}</span>
         <span>{hasText ? sourceNote(state) : 'Optimal untuk AI Image Synthesis'}</span>
       </div>

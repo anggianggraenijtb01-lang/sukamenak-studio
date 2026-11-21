@@ -98,7 +98,7 @@ export const GenerationStepper: React.FC<{ generation: Pick<Generation, 'status'
               <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${circleClass(state)}`}>
                 {state === 'failed' ? '!' : state === 'done' || state === 'running' ? '✓' : i + 1}
               </span>
-              <span className={`text-[10px] ${state === 'pending' ? 'text-slate-400' : state === 'failed' ? 'font-black text-red-600' : 'font-black text-[#0F172A]'}`}>
+              <span className={`text-[10px] ${state === 'pending' ? 'text-slate-500' : state === 'failed' ? 'font-black text-red-600' : 'font-black text-[#0F172A]'}`}>
                 {label}
               </span>
               <span className="sr-only">

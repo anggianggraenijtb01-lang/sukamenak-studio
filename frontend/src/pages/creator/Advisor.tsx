@@ -327,11 +327,11 @@ export const Advisor: React.FC = () => {
                   }`}>
                     {item.step}
                   </span>
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-[#2563EB]' : 'text-slate-400'}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-[#2563EB]' : 'text-slate-500'}`} />
                 </div>
                 <div>
                   <h4 className={`text-xs font-black ${isActive ? 'text-[#2563EB]' : 'text-[#0F172A]'}`}>{item.title}</h4>
-                  <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-snug">
+                  <p className="text-[11px] text-slate-600 mt-1 line-clamp-2 leading-snug">
                     {item.summary}
                   </p>
                 </div>
@@ -433,7 +433,7 @@ export const Advisor: React.FC = () => {
                     <XCircle className="w-3.5 h-3.5" />
                     Sebelum (Terlalu Panjang &amp; Berulang)
                   </span>
-                  <span className="text-[10px] font-mono text-red-500 font-bold">
+                  <span className="text-[10px] font-mono text-red-600 font-bold">
                     {currentCase.metrics.rawChars} Karakter
                   </span>
                 </div>
@@ -450,7 +450,7 @@ export const Advisor: React.FC = () => {
                   <ul className="space-y-1 text-xs text-red-700">
                     {currentCase.analysisWaste.map((item, i) => (
                       <li key={i} className="flex items-start gap-1.5">
-                        <span className="text-red-500 font-bold">&times;</span>
+                        <span className="text-red-600 font-bold">&times;</span>
                         <span>{item}</span>
                       </li>
                     ))}
@@ -483,19 +483,19 @@ export const Advisor: React.FC = () => {
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                     <div className="p-2 rounded-lg bg-white border border-blue-100">
-                      <span className="text-[10px] font-bold text-slate-400 block">Subjek:</span>
+                      <span className="text-[10px] font-bold text-slate-500 block">Subjek:</span>
                       <span className="text-[11px] font-semibold text-[#0F172A]">{currentCase.highlights.subject}</span>
                     </div>
                     <div className="p-2 rounded-lg bg-white border border-blue-100">
-                      <span className="text-[10px] font-bold text-slate-400 block">Cahaya:</span>
+                      <span className="text-[10px] font-bold text-slate-500 block">Cahaya:</span>
                       <span className="text-[11px] font-semibold text-[#0F172A]">{currentCase.highlights.lighting}</span>
                     </div>
                     <div className="p-2 rounded-lg bg-white border border-blue-100">
-                      <span className="text-[10px] font-bold text-slate-400 block">Latar:</span>
+                      <span className="text-[10px] font-bold text-slate-500 block">Latar:</span>
                       <span className="text-[11px] font-semibold text-[#0F172A]">{currentCase.highlights.surface}</span>
                     </div>
                     <div className="p-2 rounded-lg bg-white border border-blue-100">
-                      <span className="text-[10px] font-bold text-slate-400 block">Proteksi:</span>
+                      <span className="text-[10px] font-bold text-slate-500 block">Proteksi:</span>
                       <span className="text-[11px] font-semibold text-[#0F172A]">{currentCase.highlights.restriction}</span>
                     </div>
                   </div>
@@ -528,7 +528,7 @@ export const Advisor: React.FC = () => {
               Kamus Kata Kunci <span className="text-[#2563EB]">Studio Terverifikasi</span> (Klik untuk Sisipkan)
             </h3>
           </div>
-          <span className="text-[11px] text-slate-400">12 Preset Terverifikasi</span>
+          <span className="text-[11px] text-slate-500">12 Preset Terverifikasi</span>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -574,7 +574,7 @@ export const Advisor: React.FC = () => {
                   <Sliders className="w-3.5 h-3.5 text-[#2563EB]" />
                   Prompt Mentah / Ide Awal Anda
                 </label>
-                <span className="text-[11px] font-mono text-slate-400">
+                <span className="text-[11px] font-mono text-slate-500">
                   {rawPrompt.length} Karakter &bull; {rawPrompt.split(/\s+/).filter(Boolean).length} Kata
                 </span>
               </div>
@@ -635,7 +635,7 @@ export const Advisor: React.FC = () => {
                       setRawPrompt('');
                       improve.reset();
                     }}
-                    className="font-bold text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
+                    className="font-bold text-slate-500 hover:text-red-600 transition-colors cursor-pointer"
                   >
                     Kosongkan
                   </button>
@@ -677,7 +677,7 @@ export const Advisor: React.FC = () => {
                 {upToDate ? (
                   outputText
                 ) : (
-                  <span className="text-slate-400 font-sans">
+                  <span className="text-slate-500 font-sans">
                     {improved
                       ? 'Teks berubah sejak terakhir dirapikan. Tekan "Rapikan Prompt" lagi untuk hasil terbaru.'
                       : 'Tempelkan prompt di panel kiri, lalu tekan "Rapikan Prompt" untuk mendapat versi yang lebih ringkas dan jelas.'}

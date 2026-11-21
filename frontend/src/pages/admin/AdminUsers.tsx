@@ -299,7 +299,7 @@ export const AdminUsers: React.FC = () => {
       {/* Filters */}
       <div className="bg-white/85 backdrop-blur-md rounded-2xl border border-slate-200/90 px-4 py-3.5 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-3.5" aria-hidden="true" />
+          <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3.5 top-3.5" aria-hidden="true" />
           <input
             type="search"
             value={search}
@@ -345,7 +345,7 @@ export const AdminUsers: React.FC = () => {
           />
         )}
         {users.data && users.data.items.length > 0 && (
-          <div className={`overflow-x-auto ${users.isFetching ? 'opacity-70' : ''}`}>
+          <div className={`overflow-x-auto ${users.isFetching ? 'opacity-70' : ''}`} tabIndex={0} role="region" aria-label="Tabel pengguna (geser untuk melihat kolom lain)">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="bg-[#F8FAFC] border-b border-slate-200 text-slate-600 font-bold">
@@ -373,7 +373,7 @@ export const AdminUsers: React.FC = () => {
                         <Badge tone={u.role === 'admin' ? 'dark' : 'blue'}>{u.role === 'admin' ? 'Admin' : 'Kreator'}</Badge>
                       </td>
                       <td className="py-2.5 px-4 font-mono text-[11px]">
-                        {u.daily_limit_override != null ? `${u.daily_limit_override} / hari` : <span className="text-slate-400">Bawaan</span>}
+                        {u.daily_limit_override != null ? `${u.daily_limit_override} / hari` : <span className="text-slate-500">Bawaan</span>}
                       </td>
                       <td className="py-2.5 px-4">
                         <Badge tone={u.is_active ? 'blue' : 'slate'}>{u.is_active ? 'Aktif' : 'Nonaktif'}</Badge>
@@ -395,7 +395,7 @@ export const AdminUsers: React.FC = () => {
                           </button>
                           {u.is_active ? (
                             <button type="button" onClick={() => setDialog({ type: 'deactivate', user: u })} className={btnOutline} aria-label={`Nonaktifkan ${u.name}`}>
-                              <UserX className="w-3.5 h-3.5 text-red-500" aria-hidden="true" />
+                              <UserX className="w-3.5 h-3.5 text-red-600" aria-hidden="true" />
                               Nonaktifkan
                             </button>
                           ) : (

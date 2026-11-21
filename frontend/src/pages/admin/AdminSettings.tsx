@@ -278,7 +278,7 @@ const BrandForm: React.FC<{ brand: BrandIdentity; onSaved: (next: BrandIdentity,
                 onClick={() => setPalette((p) => p.filter((_, j) => j !== i))}
                 disabled={pending}
                 aria-label={`Hapus warna ${i + 1}`}
-                className="p-1.5 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 cursor-pointer disabled:opacity-40"
+                className="p-1.5 rounded-full text-slate-500 hover:text-red-600 hover:bg-red-50 cursor-pointer disabled:opacity-40"
               >
                 <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
               </button>
@@ -365,7 +365,7 @@ const BrandForm: React.FC<{ brand: BrandIdentity; onSaved: (next: BrandIdentity,
         <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 text-xs text-slate-300 leading-relaxed">
           {brand.disclaimer || 'Belum ada disclaimer merek.'}
         </div>
-        <p className="text-[11px] text-slate-400">Diperbarui {formatDateTime(brand.updated_at)}</p>
+        <p className="text-[11px] text-slate-500">Diperbarui {formatDateTime(brand.updated_at)}</p>
       </div>
     </div>
   );

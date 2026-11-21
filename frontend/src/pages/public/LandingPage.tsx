@@ -456,8 +456,8 @@ export const LandingPage: React.FC = () => {
                 />
                 {/* Floating Pill Badge */}
                 <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md border border-white text-xs font-black text-[#0284C7] shadow-sm">
-                    <Globe className="w-3.5 h-3.5 text-[#0284C7]" />
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md border border-white text-xs font-black text-[#0369A1] shadow-sm">
+                    <Globe className="w-3.5 h-3.5 text-[#0369A1]" />
                     <span>Web Browser</span>
                   </span>
                 </div>
@@ -524,6 +524,9 @@ export const LandingPage: React.FC = () => {
           {/* Horizontal Scroll Rail (Style Referensi Modern Card) */}
           <div
             ref={cardScrollRef}
+            tabIndex={0}
+            role="region"
+            aria-label="Contoh template (geser untuk melihat lainnya)"
             className="flex gap-6 overflow-x-auto pb-8 pt-2 scroll-smooth no-scrollbar scrollbar-none px-2"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
@@ -549,7 +552,7 @@ export const LandingPage: React.FC = () => {
                       <span>Image</span>
                     </span>
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#EFF6FF]/95 backdrop-blur-md text-[11px] font-bold text-[#1E40AF] shadow-xs">
-                      <Sparkles className="w-3.5 h-3.5 text-[#0284C7]" />
+                      <Sparkles className="w-3.5 h-3.5 text-[#0369A1]" />
                       <span>{tpl.modelBadge}</span>
                     </span>
                   </div>
@@ -585,7 +588,7 @@ export const LandingPage: React.FC = () => {
                         className="inline-flex items-center gap-1.5 text-slate-600 hover:text-[#1E40AF] transition-colors cursor-pointer"
                         title="Bagikan tautan template"
                       >
-                        <Share2 className="w-3.5 h-3.5 text-slate-400 hover:text-[#1E40AF]" />
+                        <Share2 className="w-3.5 h-3.5 text-slate-500 hover:text-[#1E40AF]" />
                         <span>{copiedKey === `link-${tpl.id}` ? 'Tautan tersalin!' : 'Share'}</span>
                       </button>
                     </div>

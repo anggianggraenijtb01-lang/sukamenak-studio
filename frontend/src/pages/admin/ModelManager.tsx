@@ -137,7 +137,7 @@ const ModelCard: React.FC<{
         <div>
           <h3 className="text-base font-extrabold text-[#0F172A] leading-snug">{m.name}</h3>
           <p className="text-[11px] font-mono text-slate-500 mt-1 break-all">{m.model_id}</p>
-          {m.base_url && <p className="text-[11px] font-mono text-slate-400 break-all">{m.base_url}</p>}
+          {m.base_url && <p className="text-[11px] font-mono text-slate-500 break-all">{m.base_url}</p>}
           {m.notes && <p className="text-xs text-[#475569] mt-2 leading-relaxed">{m.notes}</p>}
         </div>
 
@@ -356,7 +356,7 @@ export const ModelManager: React.FC = () => {
             <section key={cap} className="space-y-3" aria-label={CAPABILITY_LABELS[cap]}>
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
                 <h2 className="text-sm sm:text-base font-black text-[#0F172A]">
-                  {CAPABILITY_LABELS[cap]} <span className="text-xs font-semibold text-slate-400">({items.length} model)</span>
+                  {CAPABILITY_LABELS[cap]} <span className="text-xs font-semibold text-slate-500">({items.length} model)</span>
                 </h2>
                 <button type="button" onClick={() => setDialog({ type: 'create', capability: cap })} className="text-xs font-bold text-[#2563EB] hover:underline cursor-pointer">
                   + Tambah model {cap}
