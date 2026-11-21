@@ -92,6 +92,14 @@ const setStatus = (id: string, fields: Record<string, unknown>): Promise<unknown
 };
 
 /**
+ * Records render progress. Only a job that is still rendering moves, and only forwards: a write that
+ * lands after the job was marked done (or after a higher value) must not undo it.
+ */
+export async function recordProgress(jobId: string, percent: number): Promise<void> {
+  await query("UPDATE video_jobs SET progress = $2 WHERE id = $1 AND status = 'rendering' AND progress < $2", [jobId, percent]);
+}
+
+/**
  * Renders one video job: queued -> rendering -> done, or -> failed with a stored error code.
  *
  * A job deleted while it was rendering is finished and then thrown away (the caller owns the file).
@@ -119,14 +127,17 @@ export async function runVideoJob(jobId: string): Promise<void> {
     await writeFile(propsPath, JSON.stringify(renderProps), 'utf8');
 
     let lastProgress = -10;
+    // One write at a time, and all of them finished before the final status below.
+    let progressWrites: Promise<unknown> = Promise.resolve();
     const { timedOut, stderr } = await runRenderer(propsPath, outPath, {
       timeoutMs: env.VIDEO_JOB_TIMEOUT_MS,
       onProgress: (percent) => {
         if (percent - lastProgress < 2 && percent < 100) return;
         lastProgress = percent;
-        void setStatus(jobId, { progress: Math.min(99, percent) }).catch(() => undefined);
+        progressWrites = progressWrites.then(() => recordProgress(jobId, Math.min(99, percent))).catch(() => undefined);
       },
     });
+    await progressWrites;
 
     if (timedOut) {
       await setStatus(jobId, { status: 'failed', error_code: 'VIDEO_TIMEOUT', finished_at: new Date(), render_ms: Date.now() - startedAt, progress: 100 });
