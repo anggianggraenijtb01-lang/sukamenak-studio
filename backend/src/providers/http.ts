@@ -91,7 +91,8 @@ export async function withDeadline<T>(
   }
 }
 
-const CONTENT_BLOCK_MARKERS = /content_policy|moderation_blocked|safety|blocked/i;
+// "flagged" is how Workers AI words its output filter (code 3030: "Your output has been flagged"), and OpenAI's moderation.
+const CONTENT_BLOCK_MARKERS = /content_policy|moderation_blocked|safety|blocked|flagged/i;
 
 /** Fetches and requires a 2xx response; the error body is discarded (it may echo the request). */
 export async function fetchOk(doFetch: FetchLike, url: string, init: RequestInit, signal: AbortSignal): Promise<Response> {
