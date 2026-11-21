@@ -232,8 +232,24 @@ describe('video deletion rules', () => {
     expect(retry.status).toBe(200);
   });
 
-  it("takes the poster's videos down with it when the generation is deleted", async () => {
+  it('refuses to delete a generation while one of its videos is queued or rendering', async () => {
     const activeId = await insertRenderingCopy();
+
+    const del = await api().delete(`/api/v1/generations/${poster}`).set(bearer(owner.accessToken));
+    expect(del.status).toBe(409);
+    expect(del.body.error_code).toBe('VIDEO_STILL_RENDERING');
+
+    // Nothing was touched: the poster and both jobs are still there.
+    const gen = await pool.query<{ deleted_at: Date | null }>('SELECT deleted_at FROM generations WHERE id = $1', [poster]);
+    expect(gen.rows[0]?.deleted_at).toBeNull();
+    const jobs = await pool.query<{ deleted_at: Date | null }>('SELECT deleted_at FROM video_jobs WHERE id = ANY($1::uuid[])', [[doneJobId, activeId]]);
+    expect(jobs.rows.every((j) => j.deleted_at === null)).toBe(true);
+
+    // Once the render has ended the poster can go.
+    await pool.query("UPDATE video_jobs SET status = 'failed' WHERE id = $1", [activeId]);
+  });
+
+  it("takes the poster's videos down with it when the generation is deleted", async () => {
     const assetId = (await pool.query<{ result_asset_id: string }>('SELECT result_asset_id FROM video_jobs WHERE id = $1', [doneJobId])).rows[0]!
       .result_asset_id;
 
@@ -241,7 +257,6 @@ describe('video deletion rules', () => {
     expect(del.status).toBe(200);
 
     expect((await video(owner, doneJobId)).status).toBe(404);
-    expect((await video(owner, activeId)).status).toBe(404);
     const list = await api().get(`/api/v1/videos?generation_id=${poster}`).set(bearer(owner.accessToken));
     expect(list.body.data).toEqual([]);
     const asset = await pool.query<{ deleted_at: Date | null }>('SELECT deleted_at FROM assets WHERE id = $1', [assetId]);
