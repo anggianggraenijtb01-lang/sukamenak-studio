@@ -174,7 +174,13 @@ export async function deleteMyGeneration(userId: string, id: string): Promise<vo
     const row = rows[0];
     if (!row) throw notFound('Generasi');
     await client.query('UPDATE gallery_items SET is_hidden = true WHERE generation_id = $1', [id]);
-    return [row.result_asset_id, row.thumbnail_asset_id];
+    // The reel is made from this poster: deleting the poster deletes it too. A render still running is
+    // discarded by runVideoJob when it finds the job deleted.
+    const videos = await client.query<{ result_asset_id: string | null }>(
+      'UPDATE video_jobs SET deleted_at = now() WHERE generation_id = $1 AND deleted_at IS NULL RETURNING result_asset_id',
+      [id],
+    );
+    return [row.result_asset_id, row.thumbnail_asset_id, ...videos.rows.map((v) => v.result_asset_id)];
   });
   await softDeleteAssets(assets);
 }

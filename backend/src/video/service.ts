@@ -177,13 +177,20 @@ export async function listMyVideoJobs(userId: string, q: { page: number; limit: 
   return { items: rows.map(toVideoJobDTO), total };
 }
 
-/** Soft-deletes the job and frees its file; a render in flight is left to finish, then ignored. */
+/**
+ * Soft-deletes the job and frees its file. A job that is still queued or rendering is refused: deleting
+ * it would drop it from the daily quota and from the one-active-render-per-poster index while the
+ * render keeps using the CPU, so a creator could stack renders by deleting and re-creating.
+ */
 export async function deleteMyVideoJob(userId: string, id: string): Promise<void> {
   const row = await queryOne<{ id: string; status: string; result_asset_id: string | null }>(
     'SELECT id, status, result_asset_id FROM video_jobs WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL',
     [id, userId],
   );
   if (!row) throw notFound('Video');
+  if (row.status === 'queued' || row.status === 'rendering') {
+    throw new AppError('VIDEO_STILL_RENDERING', 'Video masih dibuat. Tunggu sampai selesai sebelum menghapusnya');
+  }
   await query('UPDATE video_jobs SET deleted_at = now() WHERE id = $1', [id]);
   if (row.result_asset_id) {
     await softDeleteAssets([row.result_asset_id]).catch(() => undefined);
