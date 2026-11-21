@@ -49,7 +49,7 @@ export const SlotField: React.FC<SlotFieldProps> = ({ slot, value, onChange, err
           {slot.required && <span className="sr-only"> (wajib)</span>}
         </label>
         {max && slot.type !== 'select' && (
-          <span className={`text-[10px] font-mono ${value.length > max ? 'text-[#EA580C] font-bold' : 'text-slate-400'}`}>
+          <span className={`text-[10px] font-mono ${value.length > max ? 'text-[#EA580C] font-bold' : 'text-slate-500'}`}>
             {value.length}/{max}
           </span>
         )}

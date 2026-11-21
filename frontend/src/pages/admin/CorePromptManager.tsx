@@ -144,7 +144,7 @@ export const CorePromptManager: React.FC = () => {
         <form onSubmit={handleSubmit} noValidate className="lg:col-span-7 bg-white border border-[#E2E8F0] rounded-2xl p-5 space-y-3.5 shadow-2xs">
           <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-2.5">
             <span className="text-xs font-mono font-bold text-[#0F172A]">master_prompt_vault.aes256 (Write-Only)</span>
-            <span className="text-[11px] font-mono text-[#0284C7] font-bold" aria-live="polite">
+            <span className="text-[11px] font-mono text-[#0369A1] font-bold" aria-live="polite">
               Placeholder: {placeholderCount}x {BLANK_TOKEN}
             </span>
           </div>
@@ -226,7 +226,7 @@ export const CorePromptManager: React.FC = () => {
           <button
             type="submit"
             disabled={sending}
-            className="w-full py-2.5 rounded-xl bg-[#EA580C] hover:bg-[#C2410C] text-white font-extrabold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-60"
+            className="w-full py-2.5 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] text-white font-extrabold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-60"
           >
             {sending ? <Spinner className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" aria-hidden="true" />}
             {sending ? 'Mengirim...' : 'Kirim Versi Baru Master Prompt (Terenkripsi di Server)'}
@@ -256,7 +256,7 @@ export const CorePromptManager: React.FC = () => {
               <Badge tone="slate">{g.versions[0].publication}</Badge>
               {g.versions.some((v) => v.is_active) ? <Badge tone="blue">Ada versi aktif</Badge> : <Badge tone="amber">Belum ada versi aktif</Badge>}
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={`Tabel versi core prompt ${g.key} (geser untuk melihat kolom lain)`}>
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="text-slate-500 font-bold border-b border-slate-100">
@@ -284,7 +284,7 @@ export const CorePromptManager: React.FC = () => {
                       </td>
                       <td className="py-2 px-4 text-right">
                         {v.is_active ? (
-                          <span className="text-[11px] text-slate-400">Versi berjalan</span>
+                          <span className="text-[11px] text-slate-500">Versi berjalan</span>
                         ) : (
                           <button
                             type="button"

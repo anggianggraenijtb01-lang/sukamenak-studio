@@ -163,7 +163,7 @@ export const VideoPanel: React.FC<{ generation: Generation; onNotice?: (notice: 
                   {data.status === 'rendering' ? ` · ${data.progress}%` : ''}
                 </span>
                 {data.status === 'done' && data.bytes && (
-                  <span className="text-slate-400 font-mono">{(data.bytes / 1_048_576).toFixed(1)} MB</span>
+                  <span className="text-slate-500 font-mono">{(data.bytes / 1_048_576).toFixed(1)} MB</span>
                 )}
               </div>
 

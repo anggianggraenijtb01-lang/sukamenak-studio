@@ -116,14 +116,14 @@ export const AdminProfile: React.FC = () => {
 
           <div className="pt-4 border-t border-slate-100 text-left space-y-3 text-xs">
             <div className="p-3 rounded-2xl bg-[#F8FAFC] border border-slate-200 space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+              <span className="text-[10px] uppercase font-bold text-slate-500 flex items-center gap-1">
                 <Mail className="w-3 h-3 text-[#2563EB]" aria-hidden="true" />
                 Email Administrator
               </span>
               <span className="font-semibold text-[#0F172A] block break-all">{user?.email}</span>
             </div>
             <div className="p-3 rounded-2xl bg-[#F8FAFC] border border-slate-200 space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+              <span className="text-[10px] uppercase font-bold text-slate-500 flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-[#2563EB]" aria-hidden="true" />
                 Aktivitas Akun
               </span>
@@ -131,7 +131,7 @@ export const AdminProfile: React.FC = () => {
               <span className="text-slate-500 block">Terdaftar: {user?.created_at ? formatDateTime(user.created_at) : '-'}</span>
             </div>
             <div className="p-3 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-1">
-              <span className="text-[10px] uppercase font-bold text-blue-500 flex items-center gap-1">
+              <span className="text-[10px] uppercase font-bold text-blue-600 flex items-center gap-1">
                 <Lock className="w-3 h-3 text-[#2563EB]" aria-hidden="true" />
                 Tingkat Otoritas Sistem
               </span>
@@ -175,7 +175,7 @@ export const AdminProfile: React.FC = () => {
                 </Field>
                 <Field label="Kata Sandi Baru (Opsional)" htmlFor="profile-new" error={fe('new_password')} hint={`Minimal ${MIN_PASSWORD} karakter.`}>
                   <div className="relative">
-                    <KeyRound className="w-3.5 h-3.5 text-slate-400 absolute left-4 top-3.5" aria-hidden="true" />
+                    <KeyRound className="w-3.5 h-3.5 text-slate-500 absolute left-4 top-3.5" aria-hidden="true" />
                     <input id="profile-new" type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} disabled={pending} placeholder="Kosongkan jika tidak diubah" className={`${inputCls} !pl-10`} />
                   </div>
                 </Field>
@@ -194,7 +194,7 @@ export const AdminProfile: React.FC = () => {
               <button
                 type="button"
                 onClick={() => void handleLogout()}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+                className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
                 <LogOut className="w-4 h-4 text-red-600" aria-hidden="true" />
                 <span>Keluar Akun Admin (Logout)</span>

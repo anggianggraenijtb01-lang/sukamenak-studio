@@ -196,14 +196,14 @@ export const ProfilePage: React.FC = () => {
 
           <div className="pt-4 border-t border-slate-100 text-left space-y-3 text-xs">
             <div className="p-3 rounded-2xl bg-[#F8FAFC] border border-slate-200 space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+              <span className="text-[10px] uppercase font-bold text-slate-500 flex items-center gap-1">
                 <Mail className="w-3 h-3 text-[#2563EB]" />
                 Alamat Email
               </span>
               <span className="font-semibold text-[#0F172A] block break-all">{user?.email ?? '...'}</span>
             </div>
             <div className="p-3 rounded-2xl bg-[#F8FAFC] border border-slate-200 space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+              <span className="text-[10px] uppercase font-bold text-slate-500 flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3 text-[#2563EB]" />
                 Kuota Hari Ini
               </span>
@@ -217,7 +217,7 @@ export const ProfilePage: React.FC = () => {
             <button
               type="button"
               onClick={() => void handleLogout()}
-              className="w-full py-2.5 px-4 rounded-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              className="w-full py-2.5 px-4 rounded-full bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5 text-red-600" />
               <span>Keluar dari Akun</span>
@@ -355,7 +355,7 @@ export const ProfilePage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setDeleteOpen(true)}
-                className="px-6 py-3 rounded-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-black text-xs sm:text-sm flex items-center gap-2 transition-colors cursor-pointer"
+                className="px-6 py-3 rounded-full bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-black text-xs sm:text-sm flex items-center gap-2 transition-colors cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Hapus Akun Saya</span>

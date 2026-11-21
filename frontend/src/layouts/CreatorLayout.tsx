@@ -87,7 +87,7 @@ export const CreatorLayout: React.FC = () => {
             <span className="text-xs sm:text-sm font-bold text-[#0F172A] group-hover:text-[#2563EB] transition-colors">
               {displayName}
             </span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#2563EB] transition-colors" />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-500 group-hover:text-[#2563EB] transition-colors" />
           </button>
 
           {/* Profile Dropdown Popover */}
@@ -149,7 +149,7 @@ export const CreatorLayout: React.FC = () => {
                       : 'text-slate-600 hover:bg-[#EFF6FF] hover:text-[#2563EB]'
                   }`}
                 >
-                  <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-[#2563EB]'}`} />
+                  <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-[#2563EB]'}`} />
                   <span className="truncate">{item.label}</span>
                 </Link>
               );
@@ -158,7 +158,7 @@ export const CreatorLayout: React.FC = () => {
         </aside>
 
         {/* Mobile Horizontal Menu Strip for Small Screens */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 py-2 flex items-center justify-around">
+        <nav aria-label="Menu utama" className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 py-2 flex items-center justify-around">
           {creatorMenus.slice(0, 5).map((item) => {
             const Icon = item.icon;
             const isActive = item.exact
@@ -177,7 +177,7 @@ export const CreatorLayout: React.FC = () => {
               </Link>
             );
           })}
-        </div>
+        </nav>
 
         {/* Center Main Module Outlet (Scaled down 10% for high density) */}
         <main className="flex-1 min-w-0 p-6 lg:p-8 bg-[#F8FAFC]" style={{ zoom: 0.9 }}>
@@ -215,9 +215,9 @@ export const CreatorLayout: React.FC = () => {
 
             {/* Column 2: Quick Navigation */}
             <div className="md:col-span-3 space-y-3">
-              <h4 className="text-xs font-black uppercase tracking-wider text-[#2563EB]">
+              <h2 className="text-xs font-black uppercase tracking-wider text-[#60A5FA]">
                 NAVIGASI RINGKAS
-              </h4>
+              </h2>
               <ul className="space-y-2 text-xs sm:text-sm text-slate-300">
                 <li>
                   <Link to="/" className="hover:text-white transition-colors">
@@ -244,9 +244,9 @@ export const CreatorLayout: React.FC = () => {
 
             {/* Column 3: Direct Contact Channels */}
             <div className="md:col-span-3 space-y-3">
-              <h4 className="text-xs font-black uppercase tracking-wider text-[#2563EB]">
+              <h2 className="text-xs font-black uppercase tracking-wider text-[#60A5FA]">
                 HUBUNGI KAMI
-              </h4>
+              </h2>
               <div className="flex flex-col gap-2 text-xs text-slate-300">
                 <a
                   href="https://wa.me/6281234567890"

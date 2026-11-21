@@ -245,7 +245,7 @@ export const AdminReferences: React.FC = () => {
 
       <div className="bg-white/85 backdrop-blur-md rounded-3xl border border-slate-200/90 p-5 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" aria-hidden="true" />
+          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" aria-hidden="true" />
           <input type="search" value={search} onChange={(e) => setFilter(() => setSearch(e.target.value))} placeholder="Cari label referensi..." aria-label="Cari referensi" className={`${inputCls} !pl-10`} />
         </div>
         <div className="flex flex-wrap gap-2">
@@ -310,7 +310,7 @@ export const AdminReferences: React.FC = () => {
                 )}
               </div>
               <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
-                <div className="text-[11px] text-slate-400">
+                <div className="text-[11px] text-slate-500">
                   {formatDate(item.created_at)} &bull; {Math.max(1, Math.round(item.bytes / 1024))} KB
                   {item.role === 'human_model' && (
                     <span className="block">

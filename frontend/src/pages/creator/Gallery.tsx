@@ -78,7 +78,7 @@ export const Gallery: React.FC = () => {
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
           <div className="relative max-w-xl flex-1">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500">
               <Search className="w-4 h-4 text-[#2563EB]" />
             </div>
             <input
@@ -185,7 +185,7 @@ export const Gallery: React.FC = () => {
                       {tpl.name}
                     </h3>
                     <p className="text-xs text-slate-500 line-clamp-2 mt-1 font-normal leading-relaxed">{tpl.description}</p>
-                    <p className="text-[10px] text-slate-400 mt-1.5 font-semibold">
+                    <p className="text-[10px] text-slate-500 mt-1.5 font-semibold">
                       {allowedModes(tpl).map((m) => MODE_TEXT[m]).join(' / ')} &bull; Rasio {tpl.aspect_ratio}
                     </p>
                   </div>
@@ -338,7 +338,7 @@ const TemplateDetailModal: React.FC<{ template: TemplateListItem; onClose: () =>
   return (
     <Modal title={template.name} eyebrow={categoryLabel(template.category)} onClose={onClose}>
       <p className="text-sm text-slate-600 leading-relaxed">{template.description}</p>
-      <p className="text-[11px] text-slate-400 font-semibold">
+      <p className="text-[11px] text-slate-500 font-semibold">
         {allowedModes(template).map((m) => MODE_TEXT[m]).join(' / ')} &bull; Rasio {template.aspect_ratio}
       </p>
       {template.requires_consent && (

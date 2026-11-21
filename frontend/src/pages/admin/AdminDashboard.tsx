@@ -270,7 +270,7 @@ export const AdminDashboard: React.FC = () => {
                           <span className="font-bold text-[#0F172A]">{failureLabel(f.error_code)}</span>
                           <span className="font-mono font-bold text-amber-700">{f.count}</span>
                         </div>
-                        <div className="text-[10px] font-mono text-slate-400">{f.error_code}</div>
+                        <div className="text-[10px] font-mono text-slate-500">{f.error_code}</div>
                         <div className="w-full h-1.5 rounded-full bg-slate-100 mt-1 overflow-hidden">
                           <div className="h-full bg-amber-500 rounded-full" style={{ width: `${(f.count / top) * 100}%` }} />
                         </div>
@@ -286,7 +286,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {data.models.map((m) => (
                 <div key={m.capability} className="p-4 rounded-2xl bg-[#F8FAFC] border border-slate-200 space-y-2">
-                  <div className="text-[10px] font-black uppercase tracking-wider text-[#0284C7]">{CAPABILITY_LABELS[m.capability]}</div>
+                  <div className="text-[10px] font-black uppercase tracking-wider text-[#0369A1]">{CAPABILITY_LABELS[m.capability]}</div>
                   {m.default ? (
                     <>
                       <div className="text-sm font-extrabold text-[#0F172A] leading-snug">{m.default.name}</div>
@@ -377,14 +377,14 @@ export const AdminDashboard: React.FC = () => {
           <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-[#BFDBFE] p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4">
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-2">
-                <div className="w-10 h-10 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-center text-[#0284C7]">
+                <div className="w-10 h-10 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-center text-[#0369A1]">
                   <Layers className="w-5 h-5" />
                 </div>
                 <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-sky-50 text-[#0369A1] border border-sky-200">Multi-Rasio</span>
               </div>
               <div>
                 <h3 className="text-sm font-extrabold text-[#0F172A]">
-                  Template &amp; <span className="text-[#0284C7]">Slot Studio</span>
+                  Template &amp; <span className="text-[#0369A1]">Slot Studio</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">Konfigurasi preset rasio (4:5, 1:1, 9:16, 16:9), zona teks aman, dan unggah draf template.</p>
               </div>
@@ -454,7 +454,7 @@ export const AdminDashboard: React.FC = () => {
       <section className="bg-white rounded-3xl border border-[#BFDBFE] p-6 shadow-xs space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] pb-3">
           <div>
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#0284C7]">Audit Pipeline Tanpa Membocorkan Prompt</span>
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#0369A1]">Audit Pipeline Tanpa Membocorkan Prompt</span>
             <h2 className="text-base font-extrabold text-[#0F172A]">
               Log Trace Generasi <span className="text-[#2563EB]">Terbaru</span>
             </h2>
@@ -473,7 +473,7 @@ export const AdminDashboard: React.FC = () => {
         {recent.isError && <ErrorState error={recent.error} onRetry={() => void recent.refetch()} title="Log tidak dapat dimuat" />}
         {recent.data && recent.data.items.length === 0 && <p className="text-xs text-slate-500 py-4 text-center">Belum ada generasi tercatat.</p>}
         {recent.data && recent.data.items.length > 0 && (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabel generasi terbaru (geser untuk melihat kolom lain)">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#F8FAFC] border-b border-[#CBD5E1] text-[11px] font-extrabold uppercase text-[#0F172A]">

@@ -94,7 +94,7 @@ export function flattenDiff(diff: Record<string, unknown>): Array<[string, unkno
 
 /** Diff exactly as returned (already secret-free): `{ from, to }` pairs become "a -> b", anything else is shown as JSON. */
 export const DiffView: React.FC<{ diff: AuditEntry['diff'] }> = ({ diff }) => {
-  if (!diff || Object.keys(diff).length === 0) return <span className="text-slate-400">-</span>;
+  if (!diff || Object.keys(diff).length === 0) return <span className="text-slate-500">-</span>;
   return (
     <ul className="space-y-0.5 font-mono text-[11px]">
       {flattenDiff(diff).map(([key, value]) => (
@@ -103,7 +103,7 @@ export const DiffView: React.FC<{ diff: AuditEntry['diff'] }> = ({ diff }) => {
           {': '}
           {isFromTo(value) ? (
             <>
-              <span className="text-red-600">{show(value.from)}</span> <span className="text-slate-400">&rarr;</span> <span className="text-emerald-700">{show(value.to)}</span>
+              <span className="text-red-600">{show(value.from)}</span> <span className="text-slate-500">&rarr;</span> <span className="text-emerald-700">{show(value.to)}</span>
             </>
           ) : (
             <span className="text-slate-600">{show(value)}</span>
@@ -225,7 +225,7 @@ export const AdminAudit: React.FC = () => {
         {audit.isError && !audit.data && <ErrorState error={audit.error} onRetry={() => void audit.refetch()} title="Audit log tidak dapat dimuat" />}
         {audit.data && audit.data.items.length === 0 && <EmptyState icon={<ScrollText className="w-6 h-6" />} title="Tidak ada catatan audit yang cocok" hint="Ubah atau atur ulang filter." />}
         {audit.data && audit.data.items.length > 0 && (
-          <div className={`overflow-x-auto ${audit.isFetching ? 'opacity-70' : ''}`}>
+          <div className={`overflow-x-auto ${audit.isFetching ? 'opacity-70' : ''}`} tabIndex={0} role="region" aria-label="Tabel audit log (geser untuk melihat kolom lain)">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="bg-[#F8FAFC] border-b border-slate-200 text-slate-600 font-bold">
@@ -252,7 +252,7 @@ export const AdminAudit: React.FC = () => {
                     </td>
                     <td className="py-3 px-5 font-mono text-[11px]">
                       {a.entity}
-                      {a.entity_id && <span className="block text-slate-400">{shortId(a.entity_id)}</span>}
+                      {a.entity_id && <span className="block text-slate-500">{shortId(a.entity_id)}</span>}
                     </td>
                     <td className="py-3 px-5 max-w-md">
                       <DiffView diff={a.diff} />

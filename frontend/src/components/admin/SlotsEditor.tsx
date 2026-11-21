@@ -211,7 +211,7 @@ const SlotFormModal: React.FC<{
                   onClick={() => setOptions((p) => p.filter((_, j) => j !== i))}
                   disabled={pending || options.length <= 1}
                   aria-label={`Hapus opsi ${i + 1}`}
-                  className="p-1.5 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 cursor-pointer disabled:opacity-40"
+                  className="p-1.5 rounded-full text-slate-500 hover:text-red-600 hover:bg-red-50 cursor-pointer disabled:opacity-40"
                 >
                   <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
@@ -258,7 +258,7 @@ export const SlotsEditor: React.FC<{
       {slots.length === 0 ? (
         <p className="text-xs text-slate-500 py-4 text-center">Belum ada slot. Tambahkan slot untuk setiap isian yang diminta dari pengguna.</p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabel slot (geser untuk melihat kolom lain)">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="bg-[#F8FAFC] border-b border-slate-200 text-slate-600 font-bold">
@@ -276,10 +276,10 @@ export const SlotsEditor: React.FC<{
                   <td className="py-2 px-3">
                     <div className="font-bold text-[#0F172A]">{s.label}</div>
                     <code className="text-[11px] text-slate-500">{s.key}</code>
-                    {s.source_hint && <div className="text-[11px] text-slate-400">{s.source_hint}</div>}
+                    {s.source_hint && <div className="text-[11px] text-slate-500">{s.source_hint}</div>}
                   </td>
                   <td className="py-2 px-3 font-mono">{s.type}</td>
-                  <td className="py-2 px-3">{s.blank_index != null ? <Badge tone="blue">#{s.blank_index}</Badge> : <span className="text-slate-400">overlay</span>}</td>
+                  <td className="py-2 px-3">{s.blank_index != null ? <Badge tone="blue">#{s.blank_index}</Badge> : <span className="text-slate-500">overlay</span>}</td>
                   <td className="py-2 px-3">{s.required ? 'Ya' : 'Tidak'}</td>
                   <td className="py-2 px-3 font-mono">{s.vision_role ?? '-'}</td>
                   <td className="py-2 px-3 text-right">
