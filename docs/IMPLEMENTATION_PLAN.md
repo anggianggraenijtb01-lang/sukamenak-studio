@@ -123,10 +123,10 @@ butuh key, akun, foto, atau server — bukan pekerjaan coding.
 
 | Fase | Kode | Sisa pekerjaan |
 |------|------|----------------|
-| E | Adapter `gemini`/`openaiCompat`/`fal` dan `npm run models:smoke` sudah ada | Isi `GEMINI_API_KEY`/`ARK_API_KEY`/`FAL_KEY`, jalankan smoke, perbaiki adapter yang gagal. PRD v3.1 dan golden set masih di tim |
+| E | Adapter `gemini`/`openaiCompat`/`fal`/**`cloudflare`** dan `npm run models:smoke` sudah ada. **Gratis: t2i `flux-1-schnell` (ok 1.766 ms) dan i2i `flux-2-klein-4b` (ok 5.134 ms) lulus smoke dengan akun Cloudflare free tier** — 10.000 neuron/hari ≈ 57 gambar, terukur 172,8 neuron per render 1024². Satu poster nyata lewat pipeline: `done`, 2,8 detik, teks Indonesia terkomposit | Vision asli: isi `GEMINI_API_KEY` (free tier Gemini tidak mendukung image generation, tapi vision teks gratis) lalu `models:smoke --capability vision`. PRD v3.1 + golden set masih di tim |
 | F | Seed + Core Prompt Manager + `npm run benchmark` sudah ada | Benchmark 3 kandidat i2i butuh key dan 10 foto produk asli. Penilaian DoD AI manual |
 | G | Dockerfile api/web/video-worker, `docker-compose.prod.yml`, Caddy, job deploy, `verify-deploy.mjs`, backup ada | VPS + DNS + GitHub Environments. Setelah itu staging diisi core prompt asli |
-| H | **Playwright** (`frontend/e2e`, lihat [`E2E.md`](E2E.md)) dan **k6 smoke** (`scripts/k6-smoke.js`) ada, jalan di CI dan setelah deploy | ≥10 template published, 6 tutorial final, galeri diisi hasil generate asli |
+| H | **Playwright** (`frontend/e2e`, lihat [`E2E.md`](E2E.md)) dan **k6 smoke** (`scripts/k6-smoke.js`) ada, jalan di CI dan setelah deploy. Konten sudah memenuhi jumlah minimum: **10 template published, 6 tutorial published** | Galeri diisi hasil generate asli — sekarang bisa tanpa biaya lewat model Cloudflare |
 | I | — | Beta 20 tester, SUS, wawancara |
 | J | — | Deploy produksi, latihan backup-restore, laporan PKM |
 
