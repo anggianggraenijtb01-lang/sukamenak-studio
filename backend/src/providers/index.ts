@@ -1,3 +1,4 @@
+import { createCloudflareProvider } from './cloudflare.js';
 import { createFalProvider } from './fal.js';
 import { createGeminiProvider } from './gemini.js';
 import { mockProvider } from './mock.js';
@@ -16,5 +17,6 @@ export function initProviders(): void {
   registerProvider(createOpenAiCompatProvider());
   registerProvider(createGeminiProvider());
   registerProvider(createFalProvider());
+  registerProvider(createCloudflareProvider());
   initialised = true;
 }

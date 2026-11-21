@@ -19,6 +19,7 @@ export const KNOWN_PROVIDER_KEY_ENVS: readonly string[] = [
   'OPENAI_API_KEY',
   'FAL_KEY',
   'ARK_API_KEY',
+  'CF_API_TOKEN',
 ];
 
 const PREFIXED = new RegExp(`^${PROVIDER_KEY_PREFIX}[A-Z0-9_]{1,60}$`);

@@ -65,6 +65,9 @@ const CANDIDATES: SeedModel[] = [
   candidate('Imagen (t2i)', 'gemini', 't2i', 'imagen-4.0-generate-001', 'GEMINI_API_KEY'),
   candidate('Seedream (t2i)', 'openai_compat', 't2i', 'seedream-4-0-250828', 'ARK_API_KEY', ARK),
   candidate('Seedream (i2i)', 'openai_compat', 'i2i', 'seedream-4-0-250828', 'ARK_API_KEY', ARK),
+  // Free tier: 10,000 neurons/day, measured at 172.8 for one 1024x1024 flux-1-schnell render.
+  candidate('Cloudflare FLUX.1 schnell (t2i)', 'cloudflare', 't2i', '@cf/black-forest-labs/flux-1-schnell', 'CF_API_TOKEN'),
+  candidate('Cloudflare FLUX.2 klein (i2i)', 'cloudflare', 'i2i', '@cf/black-forest-labs/flux-2-klein-4b', 'CF_API_TOKEN'),
 ];
 
 export const SEED_MODELS: readonly SeedModel[] = [...MOCK, ...CANDIDATES];

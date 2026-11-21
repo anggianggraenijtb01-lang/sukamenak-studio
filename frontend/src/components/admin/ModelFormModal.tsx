@@ -12,7 +12,7 @@ import {
 } from './modelRules';
 import { Banner, Field, Modal, Spinner, btnPrimary, btnSecondary, inputCls, selectCls, textareaCls } from './ui';
 
-const PROVIDERS: ModelProvider[] = ['mock', 'openai_compat', 'gemini', 'fal'];
+const PROVIDERS: ModelProvider[] = ['mock', 'openai_compat', 'gemini', 'fal', 'cloudflare'];
 const CAPABILITIES: ModelCapability[] = ['vision', 'text', 't2i', 'i2i'];
 
 function intIn(raw: string, min: number, max: number): number | null {
