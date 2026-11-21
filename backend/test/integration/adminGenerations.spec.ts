@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ProviderError } from '../../src/providers/errors.js';
 import { mockProvider } from '../../src/providers/mock.js';
 import { registerProvider } from '../../src/providers/registry.js';
-import { collectKeys, pool, registerUser } from '../helpers/api.js';
+import { api, bearer, collectKeys, pool, registerUser } from '../helpers/api.js';
 import { as, auditFor, expectNoSecretsInAudit, loginSeedAdmin, suffix, uuid, useSeededDatabase } from '../helpers/admin.js';
 import { createReferenceId, postGeneration, settle } from '../helpers/pipeline.js';
 
@@ -144,6 +144,39 @@ describe('admin generations log', () => {
     }
     expect((await as(admin).get(`/generations/${uuid()}`)).status).toBe(404);
     expect((await as(admin).get('/generations/not-a-uuid')).status).toBe(400);
+  });
+
+  it('available=true leaves out results that can no longer be used (deleted by the owner, purged, failed)', async () => {
+    const admin = await loginSeedAdmin();
+    const user = await registerUser();
+    const kept = await make(user);
+    const deleted = await make(user);
+    const purged = await make(user);
+    registerProvider({
+      ...mockProvider,
+      async generateImage() {
+        throw new ProviderError('PROVIDER_UNAVAILABLE', { httpStatus: 503 });
+      },
+    });
+    const failed = await make(user);
+    registerProvider(mockProvider);
+
+    expect((await api().delete(`/api/v1/generations/${deleted}`).set(bearer(user.accessToken))).status).toBe(200);
+    await pool.query('UPDATE generations SET purged_at = now() WHERE id = $1', [purged]);
+
+    const ids = async (qs: string) => ((await as(admin).get(`/generations?user=${user.id}&${qs}`)).body.data as { id: string }[]).map((g) => g.id).sort();
+    // Without the filter the log still shows everything: it is an operations log, not a picker.
+    expect(await ids('limit=100')).toEqual([kept, deleted, purged, failed].sort());
+    expect(await ids('available=true')).toEqual([kept]);
+    expect(await ids('available=true&status=done')).toEqual([kept]);
+    expect(await ids('available=false')).toEqual([deleted, purged, failed].sort());
+    expect((await as(admin).get('/generations?available=maybe')).status).toBe(400);
+
+    // The curation picker offers exactly what POST /gallery accepts.
+    const offered = await as(admin).post('/gallery', { title: 'dari generasi tersedia', generation_id: kept });
+    expect(offered.status).toBe(201);
+    const refused = await as(admin).post('/gallery', { title: 'dari generasi terhapus', generation_id: deleted });
+    expect(refused.status).toBe(400);
   });
 
   it('flags and unflags a generation with a note, and filters on it', async () => {

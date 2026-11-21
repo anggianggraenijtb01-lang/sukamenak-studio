@@ -88,6 +88,12 @@ function buildWhere(f: GenerationFilters): Where {
   if (f.mode) where.add((p) => `g.mode = ${p}`, f.mode);
   if (f.degraded !== undefined) where.add((p) => `g.degraded = ${p}`, f.degraded);
   if (f.flagged !== undefined) where.raw(f.flagged ? 'g.flagged_at IS NOT NULL' : 'g.flagged_at IS NULL');
+  if (f.available !== undefined) {
+    // Same conditions POST /admin/gallery enforces for `generation_id`, so a picker built on this never offers a dead end.
+    const usable = `(g.status = 'done' AND g.deleted_at IS NULL AND g.purged_at IS NULL
+      AND EXISTS (SELECT 1 FROM assets ra WHERE ra.id = g.result_asset_id AND ra.deleted_at IS NULL))`;
+    where.raw(f.available ? usable : `NOT ${usable}`);
+  }
   if (f.from) {
     const tz = where.param(env.APP_TIMEZONE);
     where.add((p) => `g.created_at >= (${p}::date::timestamp AT TIME ZONE ${tz})`, f.from);
