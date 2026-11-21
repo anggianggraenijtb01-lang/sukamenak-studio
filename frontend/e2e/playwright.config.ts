@@ -42,7 +42,10 @@ export default defineConfig({
   globalSetup: './global-setup.ts',
   webServer: [
     {
-      command: 'npx tsx src/server.ts',
+      // Playwright starts the web servers BEFORE globalSetup, so the database has to exist (and be fresh)
+      // before the API boots. On a clean Postgres (CI) the API otherwise dies on "database does not exist"
+      // and the run times out waiting for it. `e2e:db` drops, creates, migrates and seeds.
+      command: 'npm run e2e:db && npx tsx src/server.ts',
       cwd: BACKEND_DIR,
       url: `${API_URL}/health`,
       env: { ...(process.env as Record<string, string>), ...backendEnv() },

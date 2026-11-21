@@ -3,6 +3,7 @@ import { api, bearer, pool, registerUser, type TestSession } from '../helpers/ap
 import { useSeededDatabase, uuid } from '../helpers/admin.js';
 import { createReferenceId, postGeneration, settle } from '../helpers/pipeline.js';
 import { awaitVideoQueueIdle } from '../../src/video/queue.js';
+import { recordProgress } from '../../src/video/runVideoJob.js';
 
 useSeededDatabase();
 
@@ -215,6 +216,19 @@ describe('video deletion rules', () => {
     await awaitVideoQueueIdle();
     doneJobId = created.body.data.id as string;
     expect((await video(owner, doneJobId)).body.data.status).toBe('done');
+  });
+
+  it('a progress write that arrives late never touches a finished job or moves progress backwards', async () => {
+    // Progress is written fire-and-forget while the renderer prints; the last one can still be in flight
+    // when the job is marked done (seen as progress 99 on a done job in CI).
+    const activeId = await insertRenderingCopy();
+    await recordProgress(activeId, 40);
+    await recordProgress(activeId, 20);
+    expect((await pool.query('SELECT progress FROM video_jobs WHERE id = $1', [activeId])).rows[0]?.progress).toBe(40);
+
+    await pool.query("UPDATE video_jobs SET status = 'done', progress = 100 WHERE id = $1", [activeId]);
+    await recordProgress(activeId, 99);
+    expect((await pool.query('SELECT progress FROM video_jobs WHERE id = $1', [activeId])).rows[0]?.progress).toBe(100);
   });
 
   it('refuses to delete a job that is queued or rendering, so the quota and the one-render guard hold', async () => {
