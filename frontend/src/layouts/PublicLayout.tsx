@@ -2,10 +2,8 @@ import React from 'react';
 import { Link, Outlet } from 'react-router-dom';
 import { MessageCircle, Mail, Instagram } from 'lucide-react';
 import { LogoIcon } from '../components/common/Logo';
-import { homePathForRole, useAuth } from '../auth/AuthProvider';
 
 export const PublicLayout: React.FC = () => {
-  const { user, status } = useAuth();
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     if (window.location.pathname === '/') {
       e.preventDefault();
@@ -22,9 +20,9 @@ export const PublicLayout: React.FC = () => {
       {/* 1. HEADER NAVIGASI (Clean Modern SaaS) */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#E2E8F0] shadow-2xs">
         <div className="max-w-7xl mx-auto px-6 sm:px-8 h-20 flex items-center justify-between gap-6">
-          {/* Logo 'Sukamenak Studio' dengan HD Vector Logo */}
+          {/* Logo 'Sukamenak Studio' dengan HD Vector Logo (Electric Blue #3B82F6) */}
           <Link to="/" className="inline-flex items-center gap-3 select-none group">
-            <LogoIcon className="w-10 h-10 group-hover:scale-105 transition-transform" color="#2563EB" />
+            <LogoIcon className="w-10 h-10 group-hover:scale-105 transition-transform" color="#3B82F6" />
             <div className="leading-tight">
               <span className="font-extrabold text-xl tracking-tight text-[#0F172A]">
                 Sukamenak <span className="text-[#2563EB]">Studio</span>
@@ -73,21 +71,12 @@ export const PublicLayout: React.FC = () => {
 
           {/* Di ujung kanan: Tombol Masuk (#2563EB) */}
           <div className="flex items-center gap-3">
-            {status === 'authenticated' && user ? (
-              <Link
-                to={homePathForRole(user.role)}
-                className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-[#2563EB] hover:bg-[#1D4ED8] shadow-sm transition-all"
-              >
-                Buka Studio
-              </Link>
-            ) : (
-              <Link
-                to="/login"
-                className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-[#2563EB] hover:bg-[#1D4ED8] shadow-sm transition-all"
-              >
-                Masuk
-              </Link>
-            )}
+            <Link
+              to="/login"
+              className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-[#2563EB] hover:bg-[#1D4ED8] shadow-sm transition-all"
+            >
+              Masuk
+            </Link>
           </div>
         </div>
       </header>
@@ -109,7 +98,7 @@ export const PublicLayout: React.FC = () => {
             {/* Column 1 (Branding & Identity) */}
             <div className="md:col-span-5 space-y-3.5">
               <div className="flex items-center gap-2.5">
-                <LogoIcon className="w-9 h-9" color="#2563EB" />
+                <LogoIcon className="w-9 h-9" color="#3B82F6" />
                 <span className="text-xl font-black text-white tracking-tight">
                   Sukamenak <span className="text-[#2563EB]">Studio</span>
                 </span>
@@ -119,16 +108,28 @@ export const PublicLayout: React.FC = () => {
                 Platform studio visual modern untuk membantu promosi produk UMKM secara mandiri, praktis, dan profesional.
               </p>
 
-              <div className="text-xs text-slate-400 font-medium">
-                Sukamenak, Kec. Margahayu, Kab. Bandung
+              <div className="pt-1 flex items-center gap-3.5 max-w-md">
+                <img
+                  src="/logo-kabupaten-bandung.png"
+                  alt="Lambang Kabupaten Bandung"
+                  className="w-10 h-10 object-contain shrink-0 drop-shadow-sm"
+                />
+                <div className="leading-snug">
+                  <div className="text-xs font-extrabold text-white tracking-wide">
+                    Desa Sukamenak
+                  </div>
+                  <div className="text-xs text-slate-400 font-medium mt-0.5">
+                    Jl. Sukamenak No. 137, Kec. Margahayu, Kab. Bandung, Jawa Barat 40227
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Column 2 (Quick Navigation) */}
             <div className="md:col-span-3 space-y-3">
-              <h2 className="text-xs font-black uppercase tracking-wider text-[#60A5FA]">
+              <h4 className="text-xs font-black uppercase tracking-wider text-[#2563EB]">
                 NAVIGASI RINGKAS
-              </h2>
+              </h4>
               <ul className="space-y-2.5 text-xs sm:text-sm text-slate-300">
                 <li>
                   <a
@@ -149,13 +150,9 @@ export const PublicLayout: React.FC = () => {
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="/#katalog-contoh"
-                    onClick={(e) => handleNavClick(e, 'katalog-contoh')}
-                    className="hover:text-white transition-colors cursor-pointer"
-                  >
+                  <Link to="/creator/gallery" className="hover:text-white transition-colors">
                     Galeri Template
-                  </a>
+                  </Link>
                 </li>
                 <li>
                   <a
@@ -167,22 +164,18 @@ export const PublicLayout: React.FC = () => {
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="/#cara-kerja"
-                    onClick={(e) => handleNavClick(e, 'cara-kerja')}
-                    className="hover:text-white transition-colors cursor-pointer"
-                  >
+                  <Link to="/creator/tutorials" className="hover:text-white transition-colors">
                     Panduan
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
 
             {/* Column 3 (Direct Contact Channels) */}
             <div className="md:col-span-4 space-y-3">
-              <h2 className="text-xs font-black uppercase tracking-wider text-[#60A5FA]">
+              <h4 className="text-xs font-black uppercase tracking-wider text-[#2563EB]">
                 HUBUNGI KAMI
-              </h2>
+              </h4>
               <div className="flex flex-col gap-2.5 text-xs text-slate-300">
                 <a
                   href="https://wa.me/6281234567890"
@@ -214,16 +207,8 @@ export const PublicLayout: React.FC = () => {
           </div>
 
           {/* Bottom Copyright Divider */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 font-normal">
-            <span>&copy; 2026 Sukamenak Studio. Bebas Biaya untuk Kemajuan Bersama.</span>
-            <nav aria-label="Informasi hukum" className="flex items-center gap-4">
-              <Link to="/privasi" className="hover:text-white transition-colors">
-                Kebijakan Privasi
-              </Link>
-              <Link to="/syarat" className="hover:text-white transition-colors">
-                Syarat Layanan
-              </Link>
-            </nav>
+          <div className="text-center text-xs text-slate-400 font-normal">
+            &copy; 2026 Sukamenak Studio. Bebas Biaya untuk Kemajuan Bersama.
           </div>
         </div>
       </footer>

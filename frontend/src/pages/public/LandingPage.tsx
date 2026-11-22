@@ -31,7 +31,7 @@ import {
   Globe,
 } from 'lucide-react';
 import { getFeatureSvg, getLightFeatureIllustration } from '../../services/posterGraphics';
-import { useCopy } from '../../components/creator/clipboard';
+import { DesaSukamenakSection } from '../../components/public/DesaSukamenakSection';
 
 /* ─── Koleksi Template Poster Lokal Siap Pakai (Style Referensi Modern Prompt) ─── */
 const TEMPLATES_SHOWCASE = [
@@ -82,50 +82,37 @@ const TEMPLATES_SHOWCASE = [
   },
 ];
 
-/* ─── FAQs with Category Tagging (Fokus Galeri Template & Prompt Warga) ──── */
+/* ─── FAQs (Ringkas, Jelas, dan Mudah Dipahami) ──── */
 const FAQS = [
   {
     id: 'f1',
-    category: 'Galeri Template',
-    q: 'Bagaimana cara memilih dan menggunakan template dari Galeri Prompt?',
-    a: 'Cukup telusuri koleksi kartu di Galeri Template, lalu klik tombol "Gunakan". Sistem akan otomatis memuat gaya visual, susunan layout, dan pencahayaan template tersebut langsung ke Studio Generator tanpa perlu menyusun desain dari awal.',
+    q: 'Bagaimana cara mulai membuat poster?',
+    a: 'Pilih template di Galeri atau tulis ide Anda di Studio Generator, lalu unggah foto produk untuk langsung ditata otomatis.',
   },
   {
     id: 'f2',
-    category: 'Cara Pakai Prompt',
-    q: 'Apakah warga harus mengerti cara menulis kata kunci (prompt) yang rumit?',
-    a: 'Sama sekali tidak perlu! Semua prompt di dalam galeri sudah diatur dan diuji secara otomatis. Warga dan pelaku UMKM cukup memasukkan nama produk, harga, dan foto dari kamera HP biasa, sistem yang akan merapikan tata letak dan komposisinya secara instan.',
+    q: 'Apakah harus paham desain atau menulis prompt yang rumit?',
+    a: 'Tidak perlu. Cukup masukkan judul, keterangan singkat, dan foto dari kamera HP, sistem akan merapikan komposisinya secara otomatis.',
   },
   {
     id: 'f3',
-    category: 'Kustomisasi Desain',
-    q: 'Apakah teks, tulisan promo, dan keterangan pada template bisa diubah bebas?',
-    a: 'Sangat bisa. Anda bebas mengganti nama produk, varian rasa, tanggal kegiatan warga, nomor kontak WhatsApp pemesanan, hingga harga promo. Template galeri berfungsi sebagai fondasi visual siap pakai yang fleksibel sesuai kebutuhan usaha Anda.',
+    q: 'Apakah teks, harga, dan informasi pada template bisa diubah?',
+    a: 'Bisa. Anda bebas mengganti judul, harga promo, kontak pemesanan, maupun detail acara sesuai kebutuhan.',
   },
   {
     id: 'f4',
-    category: 'Galeri Template',
-    q: 'Kategori template apa saja yang sudah tersedia di Sukamenak Studio?',
-    a: 'Tersedia ragam template yang disesuaikan untuk pelaku UMKM: Kuliner (keripik, kuliner lokal, kue basah), Produk Unggulan (kopi robusta komersial), Spanduk Promo & Bazar Komersial, hingga Kriya & Kerajinan Tangan.',
+    q: 'Bagaimana jika foto dari kamera HP kurang terang?',
+    a: 'Sistem akan membantu menyesuaikan pencahayaan dan kontras agar objek foto tampil jernih dan siap dibagikan.',
   },
   {
     id: 'f5',
-    category: 'Cara Pakai Prompt',
-    q: 'Bagaimana jika foto produk dari kamera HP saya agak redup atau kurang terang?',
-    a: 'Prompt visual bawaan template Sukamenak Studio secara otomatis menyempurnakan pencahayaan redup, menonjolkan warna hidangan/kerajinan, serta memberi ruang teks (negative space) yang pas agar tulisan promosi Anda tetap terbaca jelas dan tajam.',
-  },
-  {
-    id: 'f6',
-    category: 'Batas Kuota & Lisensi',
-    q: 'Apakah melihat dan menyalin template di galeri memotong kuota harian?',
-    a: 'Melihat dan menyalin template di Galeri 100% bebas tanpa batas dan tidak memotong kuota. Kuota harian (15 kali generasi gratis/hari) hanya berkurang saat Anda menekan tombol Buat Poster di studio, dan seluruh hasil poster bebas dipakai untuk jualan komersial tanpa royalti.',
+    q: 'Apakah ada batasan pemakaian harian?',
+    a: 'Menjelajahi galeri bebas tanpa batas, sedangkan pembuatan poster baru dibatasi hingga 15 desain per hari per akun.',
   },
 ];
 
 export const LandingPage: React.FC = () => {
-  const { copiedKey, copy } = useCopy();
   const [openFaq, setOpenFaq] = useState<string | null>('f1');
-  const [activeFaqCategory, setActiveFaqCategory] = useState<string>('Semua');
   const cardScrollRef = React.useRef<HTMLDivElement>(null);
 
   const scrollCards = (direction: 'left' | 'right') => {
@@ -134,11 +121,6 @@ export const LandingPage: React.FC = () => {
       cardScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
   };
-
-  const filteredFaqs =
-    activeFaqCategory === 'Semua'
-      ? FAQS
-      : FAQS.filter((f) => f.category === activeFaqCategory);
 
   return (
     <div className="bg-[#F8FAFC] text-[#0F172A] selection:bg-[#1E40AF] selection:text-white">
@@ -171,7 +153,7 @@ export const LandingPage: React.FC = () => {
           {/* Top Capsule Badge with Glass Border */}
           <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full glass-panel shadow-sm text-xs font-extrabold text-[#1E40AF] mb-8 border border-white/80 hover:border-[#BFDBFE] transition-colors">
             <span className="w-2 h-2 rounded-full bg-[#1E40AF] animate-ping" />
-            <span>Platform Kreatif Digital UMKM Sukamenak</span>
+            <span>Platform Kreatif Digital Desa Sukamenak</span>
           </div>
 
           {/* Headline Utama */}
@@ -184,9 +166,9 @@ export const LandingPage: React.FC = () => {
             </span>
           </h1>
 
-          {/* Sub-headline Deskriptif (Tanpa kata 100% gratis) */}
+          {/* Sub-headline Deskriptif (Inklusif untuk UMKM, komunitas, & masyarakat) */}
           <p className="text-base sm:text-lg text-[#475569] max-w-2xl mx-auto mb-10 leading-relaxed font-normal">
-            Solusi cepat dan praktis untuk seluruh pelaku UMKM Sukamenak dalam menciptakan materi promosi digital profesional.
+            Solusi cepat bagi masyarakat dan pelaku usaha Desa Sukamenak untuk membuat poster digital yang menarik.
           </p>
 
           {/* Tombol Aksi CTA Ganda */}
@@ -208,6 +190,8 @@ export const LandingPage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      <DesaSukamenakSection />
 
       {/* ═══════════════════════════════════════════════════════════════════
           SECTION 2 — CARA KERJA
@@ -284,28 +268,35 @@ export const LandingPage: React.FC = () => {
 
       {/* ═══════════════════════════════════════════════════════════════════
           SECTION 3 — KEMUDAHAN LAYANAN (FEATURE SECTION)
-          Gaya: Background Putih Bersih dengan Kartu Gelap Beraksen Neon
+          Gaya: Frosted Glassmorphism & Floating Glass Orbs dengan Kartu Navy Royal Blue
       ═══════════════════════════════════════════════════════════════════ */}
-      <section id="layanan" className="relative bg-white py-24 sm:py-28 px-6 overflow-hidden border-y border-slate-100">
-        {/* Latar Belakang Kanvas Dot Matrix Halus pada Background Putih */}
+      <section id="layanan" className="relative bg-gradient-to-b from-[#EFF6FF]/80 via-[#F8FAFC] to-[#EFF6FF]/60 py-24 sm:py-28 px-6 overflow-hidden border-y border-blue-100/80">
+        {/* Latar Belakang Kanvas Dot Matrix Halus */}
         <div
-          className="absolute inset-0 opacity-40 pointer-events-none"
+          className="absolute inset-0 opacity-35 pointer-events-none"
           style={{
-            backgroundImage: 'radial-gradient(#CBD5E1 1.2px, transparent 1.2px)',
+            backgroundImage: 'radial-gradient(#93C5FD 1.2px, transparent 1.2px)',
             backgroundSize: '28px 28px',
           }}
         />
 
-        {/* Ambient Glowing Color Auras Lembut di Balik Masing-Masing Kartu */}
-        <div className="absolute top-1/2 left-[15%] -translate-y-1/2 w-96 h-96 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-orange-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute top-1/2 right-[15%] -translate-y-1/2 w-96 h-96 rounded-full bg-sky-500/10 blur-3xl pointer-events-none" />
+        {/* Ambient Glowing Royal/Electric Blue Light Orbs */}
+        <div className="absolute -top-12 left-[8%] w-96 h-96 rounded-full bg-[#3B82F6]/20 blur-3xl animate-pulse-glow pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] rounded-full bg-[#2563EB]/12 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 right-[8%] w-96 h-96 rounded-full bg-sky-400/20 blur-3xl animate-float-slow pointer-events-none" />
+
+        {/* Floating Cobalt Frosted Glass Orbs (Kaca Biru Transparan Halus) */}
+        <div className="absolute top-14 left-6 sm:left-16 w-28 h-28 rounded-3xl glass-panel-cobalt rotate-12 opacity-60 animate-float-slow pointer-events-none hidden md:block" />
+        <div className="absolute top-24 right-8 sm:right-20 w-24 h-24 rounded-full glass-panel-cobalt opacity-65 animate-float-reverse pointer-events-none hidden md:block" />
+        <div className="absolute bottom-14 left-12 w-20 h-20 rounded-2xl glass-panel-cobalt -rotate-12 opacity-55 animate-float-reverse pointer-events-none hidden lg:block" />
+        <div className="absolute bottom-20 right-14 w-32 h-32 rounded-3xl glass-panel-cobalt rotate-6 opacity-50 animate-float-slow pointer-events-none hidden lg:block" />
 
         <div className="max-w-7xl mx-auto relative z-10">
-          {/* Header Bagian (Tengah) - Tipografi Gelap Bersih pada Kanvas Putih */}
+          {/* Header Bagian (Tengah) */}
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0F172A] tracking-tight leading-[1.12]">
-              Fasilitas Mandiri untuk Usaha
+              Fasilitas Mandiri{' '}
+              <span className="text-[#1E3A8A]">untuk Usaha</span>
             </h2>
 
             <p className="text-base sm:text-lg text-[#475569] leading-relaxed max-w-2xl mx-auto font-normal">
@@ -363,7 +354,7 @@ export const LandingPage: React.FC = () => {
                   Pilihan Template Siap Pakai
                 </h3>
 
-                <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-normal">
+                <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-normal text-justify">
                   Tersedia beragam susunan poster untuk jualan makanan, produk kerajinan, hingga pengumuman warga. Tinggal tunjuk yang disukai tanpa harus menata dari awal.
                 </p>
               </div>
@@ -416,7 +407,7 @@ export const LandingPage: React.FC = () => {
                   Penyesuaian Foto Praktis
                 </h3>
 
-                <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-normal">
+                <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-normal text-justify">
                   Cukup ambil foto produk lewat kamera HP biasa. Komposisi dan pencahayaannya otomatis diselaraskan agar dagangan tampil rapi dan menggugah selera.
                 </p>
               </div>
@@ -456,8 +447,8 @@ export const LandingPage: React.FC = () => {
                 />
                 {/* Floating Pill Badge */}
                 <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md border border-white text-xs font-black text-[#0369A1] shadow-sm">
-                    <Globe className="w-3.5 h-3.5 text-[#0369A1]" />
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md border border-white text-xs font-black text-[#0284C7] shadow-sm">
+                    <Globe className="w-3.5 h-3.5 text-[#0284C7]" />
                     <span>Web Browser</span>
                   </span>
                 </div>
@@ -469,7 +460,7 @@ export const LandingPage: React.FC = () => {
                   Akses Mudah
                 </h3>
 
-                <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-normal">
+                <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-normal text-justify">
                   Langsung dibuka melalui peramban di HP maupun laptop tanpa perlu pasang aplikasi tambahan. Bebas digunakan kapan saja tanpa biaya langganan.
                 </p>
               </div>
@@ -524,9 +515,6 @@ export const LandingPage: React.FC = () => {
           {/* Horizontal Scroll Rail (Style Referensi Modern Card) */}
           <div
             ref={cardScrollRef}
-            tabIndex={0}
-            role="region"
-            aria-label="Contoh template (geser untuk melihat lainnya)"
             className="flex gap-6 overflow-x-auto pb-8 pt-2 scroll-smooth no-scrollbar scrollbar-none px-2"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
@@ -552,7 +540,7 @@ export const LandingPage: React.FC = () => {
                       <span>Image</span>
                     </span>
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#EFF6FF]/95 backdrop-blur-md text-[11px] font-bold text-[#1E40AF] shadow-xs">
-                      <Sparkles className="w-3.5 h-3.5 text-[#0369A1]" />
+                      <Sparkles className="w-3.5 h-3.5 text-[#0284C7]" />
                       <span>{tpl.modelBadge}</span>
                     </span>
                   </div>
@@ -574,22 +562,32 @@ export const LandingPage: React.FC = () => {
                     <div className="flex items-center gap-4">
                       <button
                         type="button"
-                        onClick={() => void copy(`desc-${tpl.id}`, tpl.desc)}
+                        onClick={() => {
+                          if (navigator.clipboard) {
+                            navigator.clipboard.writeText(tpl.desc);
+                            alert(`Prompt "${tpl.title}" berhasil disalin!`);
+                          }
+                        }}
                         className="inline-flex items-center gap-1.5 text-[#1E40AF] hover:text-[#1E3A8A] transition-colors font-bold cursor-pointer"
                         title="Salin deskripsi prompt"
                       >
                         <Copy className="w-3.5 h-3.5 text-[#1E40AF]" />
-                        <span>{copiedKey === `desc-${tpl.id}` ? 'Tersalin!' : 'Copy'}</span>
+                        <span>Copy</span>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => void copy(`link-${tpl.id}`, window.location.origin + '/creator/studio')}
+                        onClick={() => {
+                          if (navigator.clipboard) {
+                            navigator.clipboard.writeText(window.location.origin + '/creator/studio');
+                            alert('Tautan berhasil disalin!');
+                          }
+                        }}
                         className="inline-flex items-center gap-1.5 text-slate-600 hover:text-[#1E40AF] transition-colors cursor-pointer"
                         title="Bagikan tautan template"
                       >
-                        <Share2 className="w-3.5 h-3.5 text-slate-500 hover:text-[#1E40AF]" />
-                        <span>{copiedKey === `link-${tpl.id}` ? 'Tautan tersalin!' : 'Share'}</span>
+                        <Share2 className="w-3.5 h-3.5 text-slate-400 hover:text-[#1E40AF]" />
+                        <span>Share</span>
                       </button>
                     </div>
                   </div>
@@ -601,76 +599,70 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 5 — FAQ
-          Ciri Khas: "Interactive FAQ Accordion with Topic Category Filter"
+          SECTION 5 — FAQ (Header di Atas & Accordion Bernomor Frosted Glass)
       ═══════════════════════════════════════════════════════════════════ */}
-      <section id="faq" className="relative bg-[#F8FAFC] py-28 px-6">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-10 space-y-3">
-            <h2 className="text-5xl sm:text-7xl font-black text-[#0F172A] tracking-tight leading-[0.95]">
-              FAQ
+      <section id="faq" className="relative bg-gradient-to-b from-[#F8FAFC] via-[#EFF6FF]/60 to-[#F8FAFC] py-24 sm:py-28 px-6 overflow-hidden border-t border-slate-100">
+        {/* Ambient Soft Blue Orbs */}
+        <div className="absolute -top-20 -left-20 w-96 h-96 rounded-full bg-[#3B82F6]/10 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-20 -right-20 w-96 h-96 rounded-full bg-[#1E3A8A]/10 blur-3xl pointer-events-none" />
+
+        <div className="max-w-4xl mx-auto relative z-10 space-y-10">
+          {/* Header di Atas (Rata Tengah) */}
+          <div className="text-center max-w-2xl mx-auto space-y-3">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0F172A] tracking-tight leading-[1.12]">
+              Pertanyaan <span className="text-[#1E3A8A]">Umum</span>
             </h2>
-            <p className="text-sm sm:text-base text-[#475569]">
-              Pertanyaan yang sering diajukan warga seputar pemilihan template, pemakaian prompt galeri, dan pembuatan poster.
+
+            <p className="text-sm sm:text-base text-[#475569] leading-relaxed">
+              Jawaban singkat seputar penggunaan Sukamenak Studio.
             </p>
           </div>
 
-          {/* Category Filter Pills */}
-          <div className="flex flex-wrap justify-center items-center gap-2 mb-8">
-            {['Semua', 'Galeri Template', 'Cara Pakai Prompt', 'Kustomisasi Desain', 'Batas Kuota & Lisensi'].map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveFaqCategory(cat)}
-                className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
-                  activeFaqCategory === cat
-                    ? 'bg-[#1E40AF] text-white shadow-md'
-                    : 'bg-white border border-[#CBD5E1] text-[#475569] hover:border-[#1E40AF]'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          {/* Accordion List */}
-          <div className="space-y-3">
-            {filteredFaqs.map((faq) => {
+          {/* Accordion Bernomor 01-05 */}
+          <div className="space-y-3.5">
+            {FAQS.map((faq, index) => {
               const isOpen = openFaq === faq.id;
+              const num = String(index + 1).padStart(2, '0');
+
               return (
                 <button
                   key={faq.id}
+                  type="button"
                   onClick={() => setOpenFaq(isOpen ? null : faq.id)}
-                  className={`w-full text-left rounded-2xl px-5 py-4 sm:px-6 sm:py-4.5 flex items-start justify-between gap-4 transition-all duration-200 cursor-pointer ${
+                  className={`w-full text-left rounded-2xl p-5 sm:p-6 flex items-start justify-between gap-4 transition-all duration-300 cursor-pointer ${
                     isOpen
-                      ? 'bg-[#1E40AF] text-white shadow-xl shadow-blue-500/20 ring-2 ring-[#1E40AF]'
-                      : 'bg-white border border-[#E2E8F0] text-[#0F172A] hover:border-[#93C5FD] hover:shadow-md'
+                      ? 'bg-gradient-to-r from-[#132247] to-[#1E3A8A] text-white shadow-xl shadow-blue-950/20 border border-blue-400/30'
+                      : 'glass-panel hover:bg-white text-[#0F172A] border border-slate-200/90 hover:border-[#2563EB]/40 hover:shadow-md'
                   }`}
                 >
-                  <div className="space-y-1">
+                  <div className="flex items-start gap-4 flex-1">
                     <span
-                      className={`inline-block text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full mb-1 ${
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 transition-colors ${
                         isOpen
-                          ? 'bg-white/20 text-white'
-                          : 'bg-[#EFF6FF] text-[#1E40AF]'
+                          ? 'bg-white text-[#132247] shadow-sm'
+                          : 'bg-[#EFF6FF] text-[#1E3A8A] border border-blue-200'
                       }`}
                     >
-                      {faq.category}
+                      {num}
                     </span>
-                    <div className="font-bold text-sm sm:text-base leading-snug">
-                      {faq.q}
-                    </div>
-                    {isOpen && (
-                      <div className="mt-2 text-xs sm:text-sm text-blue-100 leading-relaxed font-normal pt-2 border-t border-white/20">
-                        {faq.a}
+
+                    <div className="space-y-1.5 flex-1 pt-1">
+                      <div className="font-bold text-sm sm:text-base leading-snug">
+                        {faq.q}
                       </div>
-                    )}
+                      {isOpen && (
+                        <div className="pt-2.5 text-xs sm:text-sm text-blue-100/95 leading-relaxed font-normal border-t border-white/15">
+                          {faq.a}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex-shrink-0 mt-2">
+
+                  <div className="flex-shrink-0 pt-2">
                     {isOpen ? (
                       <ChevronUp className="w-4 h-4 text-white" />
                     ) : (
-                      <ChevronDown className="w-4 h-4 text-[#94A3B8]" />
+                      <ChevronDown className="w-4 h-4 text-[#64748B]" />
                     )}
                   </div>
                 </button>
