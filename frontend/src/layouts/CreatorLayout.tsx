@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, useMe } from '../auth/AuthProvider';
 import { LogoIcon } from '../components/common/Logo';
+import { UserAvatar } from '../components/common/UserAvatar';
 import {
   LayoutGrid,
   Image as ImageIcon,
@@ -10,7 +11,6 @@ import {
   History,
   BookOpen,
   User,
-  MessageCircle,
   Mail,
   Instagram,
   LogOut,
@@ -24,7 +24,6 @@ export const CreatorLayout: React.FC = () => {
   const { data: me } = useMe();
   const usage = me?.usage;
   const displayName = user?.name ?? '';
-  const initial = displayName.trim().charAt(0).toUpperCase() || '?';
   const roleLabel = user?.role === 'admin' ? 'Admin Sukamenak' : 'Kreator UMKM Sukamenak';
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
@@ -52,7 +51,7 @@ export const CreatorLayout: React.FC = () => {
           1. GLOBAL TOP NAVBAR (STANDARDIZED MINIMALIST HEADER)
           - Left: Crisp 'Sukamenak Studio' wordmark with geometric Royal Blue glyph emblem.
           - Middle: Wide, clean negative space (Completely empty; strictly NO search bar, NO quota badges).
-          - Right: Sleek elevated profile capsule: the signed-in user's name and initial.
+          - Right: Sleek elevated profile capsule: the signed-in user's name and photo (initial as fallback).
       ───────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 bg-white border-b border-[#E2E8F0] px-6 lg:px-8 h-18 flex items-center justify-between shadow-2xs">
         
@@ -71,7 +70,7 @@ export const CreatorLayout: React.FC = () => {
         {/* Middle: Wide Clean Negative Space (Empty, zero clutter) */}
         <div className="flex-1" />
 
-        {/* Right: Sleek elevated profile capsule: Circular light-slate avatar with Royal Blue initial & the user's name */}
+        {/* Right: Sleek elevated profile capsule: Circular avatar (photo, or Royal Blue initial) & the user's name */}
         <div className="relative">
           <button
             type="button"
@@ -81,9 +80,11 @@ export const CreatorLayout: React.FC = () => {
             aria-label={`Menu akun ${displayName}`}
             className="flex items-center gap-2.5 pl-2 pr-3.5 py-1.5 rounded-full bg-white border border-[#CBD5E1] hover:border-[#2563EB] shadow-xs hover:shadow-md transition-all cursor-pointer group"
           >
-            <div className="w-8 h-8 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] flex items-center justify-center text-xs font-black text-[#2563EB]" aria-hidden="true">
-              {initial}
-            </div>
+            <UserAvatar
+              name={displayName}
+              avatarUrl={user?.avatar_url}
+              className="w-8 h-8 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] text-xs text-[#2563EB]"
+            />
             <span className="text-xs sm:text-sm font-bold text-[#0F172A] group-hover:text-[#2563EB] transition-colors">
               {displayName}
             </span>
@@ -248,15 +249,6 @@ export const CreatorLayout: React.FC = () => {
                 HUBUNGI KAMI
               </h2>
               <div className="flex flex-col gap-2 text-xs text-slate-300">
-                <a
-                  href="https://wa.me/6281234567890"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-slate-700 transition-colors"
-                >
-                  <MessageCircle className="w-3.5 h-3.5 text-[#2563EB]" />
-                  <span>WhatsApp (+62 812-3456-7890)</span>
-                </a>
                 <a
                   href="mailto:kontak@sukamenak.org"
                   className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-slate-700 transition-colors"

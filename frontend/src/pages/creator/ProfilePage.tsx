@@ -1,14 +1,25 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, CheckCircle2, Download, KeyRound, Loader2, LogOut, Mail, Save, ShieldCheck, Store, Trash2 } from 'lucide-react';
+import { AlertTriangle, Camera, CheckCircle2, Download, KeyRound, Loader2, LogOut, Mail, Save, ShieldCheck, Store, Trash2 } from 'lucide-react';
 import { useAuth, useMe } from '../../auth/AuthProvider';
-import { deleteMe, downloadMyData, updateMe } from '../../api/creator';
+import { deleteMe, downloadMyData, removeAvatar, updateMe, uploadAvatar } from '../../api/creator';
 import { getErrorMessage, isApiError } from '../../api/errors';
 import { queryKeys } from '../../api/queryKeys';
 import type { MeResponse } from '../../api/types';
 import { ConfirmDialog } from '../../components/creator/Modal';
 import { FieldError } from '../../components/creator/StateViews';
+import { UserAvatar } from '../../components/common/UserAvatar';
+
+/** Same cap as the server (`AVATAR_MAX_BYTES`), checked first so a too-big photo is never uploaded. */
+export const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
+
+/** Client-side check of a picked profile photo; `null` when it may be uploaded. */
+export function validateAvatarFile(file: Pick<File, 'type' | 'size'>): string | null {
+  if (!file.type.startsWith('image/')) return 'File harus berupa gambar (JPG, PNG, atau WebP).';
+  if (file.size > AVATAR_MAX_BYTES) return 'Ukuran foto maksimal 5 MB. Pilih foto yang lebih kecil.';
+  return null;
+}
 
 const inputClass =
   'w-full px-4 py-2.5 rounded-full bg-[#F8FAFC] border border-[#CBD5E1] text-xs sm:text-sm text-[#0F172A] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-[#2563EB] transition-all disabled:opacity-60';
@@ -49,6 +60,46 @@ export const ProfilePage: React.FC = () => {
   const me = useMe();
   const usage = me.data?.usage;
   const isAdmin = user?.role === 'admin';
+
+  // ---- avatar ----
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [avatarBusy, setAvatarBusy] = useState<'upload' | 'remove' | null>(null);
+  const [avatarNotice, setAvatarNotice] = useState<Notice>(null);
+  const avatarUrl = user?.avatar_url ?? null;
+
+  /** Runs an avatar change, then refreshes the cached `/me` and the auth user (header, this page). */
+  const changeAvatar = async (kind: 'upload' | 'remove', run: () => ReturnType<typeof removeAvatar>, okText: string) => {
+    setAvatarBusy(kind);
+    setAvatarNotice(null);
+    try {
+      const res = await run();
+      queryClient.setQueryData<MeResponse>(queryKeys.me, (old) => (old ? { ...old, user: res.user } : old));
+      await refreshUser();
+      setAvatarNotice({ tone: 'ok', text: okText });
+    } catch (err) {
+      setAvatarNotice({ tone: 'error', text: isApiError(err) && err.fieldErrors.avatar ? err.fieldErrors.avatar : getErrorMessage(err) });
+    } finally {
+      setAvatarBusy(null);
+    }
+  };
+
+  const handleAvatarPicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Reset so picking the same file again still fires `change`.
+    e.target.value = '';
+    if (!file || avatarBusy) return;
+    const problem = validateAvatarFile(file);
+    if (problem) {
+      setAvatarNotice({ tone: 'error', text: problem });
+      return;
+    }
+    void changeAvatar('upload', () => uploadAvatar(file), 'Foto profil berhasil diperbarui.');
+  };
+
+  const handleAvatarRemove = () => {
+    if (avatarBusy) return;
+    void changeAvatar('remove', removeAvatar, 'Foto profil dihapus.');
+  };
 
   // ---- name ----
   const [name, setName] = useState<string | null>(null);
@@ -167,7 +218,6 @@ export const ProfilePage: React.FC = () => {
     navigate('/login', { replace: true });
   };
 
-  const initial = (user?.name ?? '').trim().charAt(0).toUpperCase() || '?';
   const roleLabel = isAdmin ? 'Admin Sukamenak' : 'Kreator & Pelaku UMKM';
 
   return (
@@ -180,11 +230,69 @@ export const ProfilePage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* LEFT PANE: identity */}
         <div className="lg:col-span-4 bg-white rounded-3xl border border-[#CBD5E1] p-6 sm:p-7 text-center space-y-5 shadow-sm">
-          <div
-            className="w-28 h-28 mx-auto rounded-full bg-[#EFF6FF] border-4 border-white text-[#2563EB] flex items-center justify-center font-black text-4xl shadow-lg shadow-blue-500/20"
-            aria-hidden="true"
-          >
-            {initial}
+          <div className="space-y-3">
+            <div className="relative w-28 h-28 mx-auto">
+              <div className="absolute -inset-1.5 rounded-full bg-gradient-to-br from-[#2563EB] via-sky-400 to-[#1E40AF] opacity-80" aria-hidden="true" />
+              <UserAvatar
+                name={user?.name}
+                avatarUrl={avatarUrl}
+                alt={user?.name ? `Foto profil ${user.name}` : 'Foto profil'}
+                className="w-28 h-28 rounded-full bg-[#EFF6FF] border-4 border-white text-[#2563EB] text-4xl shadow-lg shadow-blue-500/20"
+              >
+                {avatarBusy && (
+                  <div className="absolute inset-0 bg-slate-900/45 flex items-center justify-center" data-testid="avatar-busy">
+                    <Loader2 className="w-7 h-7 text-white animate-spin" />
+                  </div>
+                )}
+              </UserAvatar>
+              <button
+                type="button"
+                onClick={() => fileInput.current?.click()}
+                disabled={avatarBusy !== null}
+                aria-hidden="true"
+                tabIndex={-1}
+                title="Ganti foto"
+                className="absolute bottom-0.5 right-0.5 w-9 h-9 rounded-full bg-[#2563EB] hover:bg-[#1D4ED8] border-[3px] border-white text-white flex items-center justify-center shadow-md shadow-blue-500/30 transition-colors cursor-pointer disabled:opacity-60 disabled:pointer-events-none"
+              >
+                <Camera className="w-4 h-4" />
+              </button>
+            </div>
+
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarPicked}
+              data-testid="avatar-input"
+              aria-label="Pilih foto profil"
+            />
+            <div className="flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => fileInput.current?.click()}
+                disabled={avatarBusy !== null}
+                className="px-4 py-2 rounded-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-[11px] font-black flex items-center gap-1.5 shadow-md shadow-blue-500/25 transition-all cursor-pointer hover:shadow-lg disabled:opacity-60 disabled:pointer-events-none"
+              >
+                {avatarBusy === 'upload' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                <span>{avatarBusy === 'upload' ? 'Mengunggah...' : 'Ganti Foto'}</span>
+              </button>
+              {avatarUrl && (
+                <button
+                  type="button"
+                  onClick={handleAvatarRemove}
+                  disabled={avatarBusy !== null}
+                  className="px-4 py-2 rounded-full bg-white hover:bg-red-50 text-red-700 border border-red-200 text-[11px] font-black flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60 disabled:pointer-events-none"
+                >
+                  {avatarBusy === 'remove' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                  <span>{avatarBusy === 'remove' ? 'Menghapus...' : 'Hapus Foto'}</span>
+                </button>
+              )}
+            </div>
+            <p className="text-[10px] text-slate-500">Format gambar (JPG, PNG, WebP), maksimal 5 MB.</p>
+            <div className="text-left">
+              <NoticeBox notice={avatarNotice} />
+            </div>
           </div>
 
           <div>

@@ -51,6 +51,7 @@ cd backend
 npm install
 npm run migrate
 npm run seed        # mencetak kata sandi admin dan demo SEKALI: salin sekarang
+npm run models:activate   # WAJIB: pakai model gambar asli (Cloudflare), bukan placeholder mock
 npm run dev         # API di http://localhost:3000
 
 # terminal 2
@@ -74,13 +75,32 @@ Satu video 8 detik butuh sekitar 40–150 detik untuk dirender.
 
 ## 5. Memakai gambar asli (Cloudflare)
 
-Secara bawaan semua model **Mock**: gambar contoh, tanpa AI sungguhan. Untuk memakai Cloudflare:
+Secara bawaan semua model **Mock**: gambar contoh, tanpa AI sungguhan.
+
+`npm run models:activate` (lihat langkah 4) mengaktifkan sendiri setiap model yang kunci API-nya sudah terisi dan
+menjadikannya default, jadi dengan `CF_API_TOKEN` + `CF_ACCOUNT_ID` di `.env` hasil generasi sudah memakai Cloudflare
+tanpa lewat panel admin. Untuk mengubahnya secara manual:
 
 1. Masuk sebagai admin, buka **Model LLM**.
 2. Di bagian **T2I**, pada kartu *Cloudflare FLUX.1 schnell* (awalnya **Nonaktif**): klik **Aktifkan**, lalu
    **Uji Koneksi** (harus "Koneksi berhasil"), lalu **Jadikan Default**.
 3. Di bagian **I2I**, lakukan hal yang sama pada *Cloudflare FLUX.2 klein*.
 4. Untuk kembali ke contoh tanpa AI, jadikan default lagi model *Mock*.
+
+Kalau **Aktifkan** ditolak, periksa bahwa `CF_API_TOKEN` dan `CF_ACCOUNT_ID` sudah terisi di `backend/.env` dan API
+sudah dijalankan ulang sesudah mengisinya.
+
+Cara memastikan model mana yang benar-benar dipakai: buka detail hasil generasi, atau di database
+
+```sql
+select g.stage, m.name, m.provider, g.error_code
+  from generation_events g left join model_configs m on m.id = g.model_config_id
+ where g.generation_id = '<id generasi>' order by g.created_at;
+```
+
+Baris `generate` harus menyebut model asli (mis. *Cloudflare FLUX.1 schnell*). Kalau yang tercatat *Mock*, gambar yang
+Anda nilai adalah placeholder gradien, bukan hasil AI — aktifkan modelnya dulu.
+
 
 Kalau **Aktifkan** ditolak, periksa bahwa `CF_API_TOKEN` dan `CF_ACCOUNT_ID` sudah terisi di `backend/.env` dan API
 sudah dijalankan ulang sesudah mengisinya.

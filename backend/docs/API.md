@@ -57,6 +57,7 @@ List endpoints take `page` (from 1) and `limit` (per-endpoint default and maximu
 | `VALIDATION_ERROR` | 400 | Body, query or path parameter is invalid; also malformed JSON and unknown fields. `errors[]` lists the fields. |
 | `EMAIL_EXISTS` | 409 | Email is already registered. |
 | `INVALID_CREDENTIALS` | 401 | Wrong email or password (also wrong current password). |
+| `INVALID_RESET_TOKEN` | 400 | The password reset link is unknown, expired or already used. |
 | `UNAUTHORIZED` | 401 | Missing, malformed, expired or revoked token / session. |
 | `FORBIDDEN` | 403 | Authenticated, but the role is not allowed (for example a creator calling `/admin/*`). |
 | `ACCOUNT_INACTIVE` | 403 | The account is deactivated. Takes effect immediately for existing tokens. |
@@ -141,8 +142,14 @@ Legend for **Auth**: none = public, creator = any logged in user (admins include
 | `POST /auth/login` | `{ email, password }` | 200 same `data`. Errors: `INVALID_CREDENTIALS`, `ACCOUNT_INACTIVE`. |
 | `POST /auth/refresh` | none (cookie) | 200 new session `data`, rotated cookie. `UNAUTHORIZED` clears the cookie. |
 | `POST /auth/logout` | none (cookie) | 200 `{ logged_out: true }`. Always succeeds. |
+| `POST /auth/forgot-password` | `{ email }` | 200 `data: { sent: true }` **always**, whether or not the email has an active account (no account enumeration). For an active account it emails a one-time link `${APP_PUBLIC_URL}/reset-password?token=<token>`, valid `PASSWORD_RESET_TTL_MINUTES` (default 60) and superseding that user's earlier unused links. Auth rate limit. Errors: `VALIDATION_ERROR`, `RATE_LIMIT_EXCEEDED`. |
+| `POST /auth/reset-password` | `{ token, new_password (8-72 bytes) }` | 200 `data: { reset: true }`. Sets the password, voids the user's other open links and signs out every session (refresh tokens revoked, older access tokens answer 401). The user then logs in normally; no session is returned. Auth rate limit. Errors: `INVALID_RESET_TOKEN` (unknown, expired or already used token), `VALIDATION_ERROR`. |
 
 `user`: `{ id, email, name, role: "creator" | "admin", last_login_at, created_at }`.
+
+Reset mail goes through Resend when `RESEND_API_KEY` is set (sender `MAIL_FROM`). Without a key the full message,
+link included, is written to `backend/var/outbox/<timestamp>-<email>.txt` and the path is logged: that is how a
+tester without a mail account reads the link.
 
 ### 2.3 Profile (creator)
 
@@ -229,6 +236,7 @@ A video is a render of a finished generation, not a new model capability. See [`
 | `GET /videos/quota` | `{ limit, used }` for today. |
 | `GET /videos/:id` | Owner only (404 otherwise). Poll about every 2 s while `status` is `queued`/`rendering`. |
 | `DELETE /videos/:id` | Soft delete; removes the mp4. |
+| `PATCH /videos/:id` | Body `{ duration_seconds }` (3-30). Re-renders the same job with a new cut length and frees the replaced file; refused while `queued`/`rendering` (`VIDEO_STILL_RENDERING`). |
 
 ```json
 {

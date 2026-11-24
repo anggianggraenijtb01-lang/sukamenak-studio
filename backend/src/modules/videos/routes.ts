@@ -1,11 +1,17 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { ok, pageMeta } from '../../lib/response.js';
+import { accepted, ok, pageMeta } from '../../lib/response.js';
 import { requireAuth } from '../../middleware/auth.js';
 import { getValid, validate } from '../../middleware/validate.js';
 import * as service from '../../video/service.js';
 
 const idParams = { params: z.object({ id: z.string().uuid() }) };
+
+/** An edit re-renders the existing job, so the body is the new cut length and nothing else. */
+const updateSchemas = {
+  params: z.object({ id: z.string().uuid() }),
+  body: z.object({ duration_seconds: z.number().int().min(service.MIN_VIDEO_DURATION) }),
+};
 
 const listSchemas = {
   query: z.object({
@@ -37,6 +43,12 @@ videoRouter.get('/quota', async (req, res) => {
 videoRouter.get('/:id', validate(idParams), async (req, res) => {
   const { params } = getValid(req, idParams);
   ok(res, await service.getMyVideoJob(req.user!.id, params.id), 'Detail video');
+});
+
+videoRouter.patch('/:id', validate(updateSchemas), async (req, res) => {
+  const { params, body } = getValid(req, updateSchemas);
+  const job = await service.updateMyVideoJob(req.user!.id, params.id, { durationSeconds: body.duration_seconds });
+  accepted(res, job, 'Video sedang dibuat ulang');
 });
 
 videoRouter.delete('/:id', validate(idParams), async (req, res) => {

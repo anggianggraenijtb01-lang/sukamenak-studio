@@ -186,7 +186,7 @@ const sections: LegalSection[] = [
             <strong>Hapus data:</strong> hapus tiap desain di <Link to="/creator/history">Riwayat</Link>, hapus foto unggahan di Studio, atau hapus seluruh akun lewat tombol &quot;Hapus Akun Saya&quot; di Profil Saya.
           </li>
           <li>
-            <strong>Tarik persetujuan foto orang, atau ajukan keberatan dan pertanyaan lain:</strong> hubungi kami di kontak@sukamenak.org atau WhatsApp +62 812-3456-7890.{' '}
+            <strong>Tarik persetujuan foto orang, atau ajukan keberatan dan pertanyaan lain:</strong> hubungi kami di kontak@sukamenak.org.{' '}
             <Todo>batas waktu tanggapan atas permintaan hak subjek data</Todo>
           </li>
         </ul>

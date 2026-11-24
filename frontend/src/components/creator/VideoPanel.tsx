@@ -8,9 +8,11 @@ import type { Generation, VideoJob } from '../../api/types';
 import { fileUrl, saveBlob } from '../../api/client';
 import { generationTitle, resultFileName } from './format';
 
-const POLL_MS = 2000;
+/** Poll interval of a video job while it is queued or rendering (shared with the studio's video mode). */
+export const VIDEO_POLL_MS = 2000;
+const POLL_MS = VIDEO_POLL_MS;
 
-const STATUS_TEXT: Record<VideoJob['status'], string> = {
+export const VIDEO_STATUS_TEXT: Record<VideoJob['status'], string> = {
   queued: 'Menunggu antrean',
   rendering: 'Sedang dirender',
   done: 'Selesai',
@@ -20,7 +22,8 @@ const STATUS_TEXT: Record<VideoJob['status'], string> = {
 /** The stored poster already carries its text, so only a finished, text-bearing poster can be animated. */
 export const canMakeVideo = (g: Generation): boolean => g.status === 'done' && g.composited_text && !!g.result_url;
 
-async function downloadVideo(url: string, filename: string): Promise<boolean> {
+/** Saves the MP4; falls back to opening it in a new tab (returns `false`) when the blob cannot be fetched. */
+export async function downloadVideo(url: string, filename: string): Promise<boolean> {
   const href = fileUrl(url);
   try {
     const res = await fetch(href, { credentials: 'omit' });
@@ -33,7 +36,7 @@ async function downloadVideo(url: string, filename: string): Promise<boolean> {
   }
 }
 
-const ProgressBar: React.FC<{ value: number }> = ({ value }) => (
+export const ProgressBar: React.FC<{ value: number }> = ({ value }) => (
   <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden" role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={100}>
     <div
       className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED] transition-[width] duration-500"
@@ -159,7 +162,7 @@ export const VideoPanel: React.FC<{ generation: Generation; onNotice?: (notice: 
             <div className="space-y-2.5">
               <div className="flex items-center justify-between text-[11px] font-bold">
                 <span className={data.status === 'failed' ? 'text-red-600' : data.status === 'done' ? 'text-emerald-600' : 'text-[#1D4ED8]'}>
-                  {STATUS_TEXT[data.status]}
+                  {VIDEO_STATUS_TEXT[data.status]}
                   {data.status === 'rendering' ? ` · ${data.progress}%` : ''}
                 </span>
                 {data.status === 'done' && data.bytes && (

@@ -4,7 +4,17 @@ import {
   allowedModes,
   buildGenerationRequest,
   buildSlotValues,
+  clampVideoDuration,
+  DEFAULT_VIDEO_DURATION,
   defaultUploadRole,
+  isImageMode,
+  MAX_VIDEO_DURATION,
+  MIN_VIDEO_DURATION,
+  modeOptions,
+  parseStudioMode,
+  pickStudioMode,
+  studioModeOption,
+  videoQuotaLeft,
   imageSlots,
   initialSlotValues,
   needsConsent,
@@ -88,6 +98,57 @@ describe('modes', () => {
     expect(pickDefaultTemplate(list, 'i2i')).toBe(list[2]);
     expect(pickDefaultTemplate(list, 't2i')).toBe(list[0]);
     expect(pickDefaultTemplate([], 'i2i')).toBeUndefined();
+  });
+});
+
+describe('studio mode dropdown', () => {
+  const values = (template: Parameters<typeof modeOptions>[0]) => modeOptions(template).map((o) => o.value);
+
+  it('narrows the image modes to the template but always offers video', () => {
+    expect(values({ mode: 'both' })).toEqual(['t2i', 'i2i', 'video']);
+    expect(values({ mode: 'i2i' })).toEqual(['i2i', 'video']);
+    expect(values({ mode: 't2i' })).toEqual(['t2i', 'video']);
+    // Before the template has loaded no restriction is known yet.
+    expect(values(null)).toEqual(['t2i', 'i2i', 'video']);
+  });
+
+  it('labels every option in Indonesian with a helper line', () => {
+    expect(modeOptions({ mode: 'both' }).map((o) => o.label)).toEqual(['Teks ke Gambar', 'Foto ke Gambar', 'Video (Reel)']);
+    expect(modeOptions(null).every((o) => o.help.length > 0)).toBe(true);
+    expect(studioModeOption('video').label).toBe('Video (Reel)');
+  });
+
+  it('keeps video across a template switch and otherwise falls back to an allowed image mode', () => {
+    expect(pickStudioMode({ mode: 'i2i' }, 'video')).toBe('video');
+    expect(pickStudioMode({ mode: 'i2i' }, 't2i')).toBe('i2i');
+    expect(pickStudioMode({ mode: 'both' }, 't2i')).toBe('t2i');
+    expect(pickStudioMode({ mode: 't2i' }, null)).toBe('t2i');
+  });
+
+  it('reads the deep-link mode and tells image modes from video', () => {
+    expect(parseStudioMode('video')).toBe('video');
+    expect(parseStudioMode('t2i')).toBe('t2i');
+    expect(parseStudioMode('reel')).toBeNull();
+    expect(parseStudioMode(null)).toBeNull();
+    expect(isImageMode('i2i')).toBe(true);
+    expect(isImageMode('video')).toBe(false);
+  });
+});
+
+describe('video helpers', () => {
+  it('clamps the duration to whole seconds between 3 and 15', () => {
+    expect(clampVideoDuration(15)).toBe(15);
+    expect(clampVideoDuration(1)).toBe(MIN_VIDEO_DURATION);
+    expect(clampVideoDuration(60)).toBe(MAX_VIDEO_DURATION);
+    expect(clampVideoDuration('7.6')).toBe(8);
+    expect(clampVideoDuration('')).toBe(DEFAULT_VIDEO_DURATION);
+    expect(clampVideoDuration(Number.NaN)).toBe(DEFAULT_VIDEO_DURATION);
+  });
+
+  it('reports the remaining video quota, never below zero', () => {
+    expect(videoQuotaLeft({ limit: 3, used: 1 })).toBe(2);
+    expect(videoQuotaLeft({ limit: 3, used: 5 })).toBe(0);
+    expect(videoQuotaLeft(undefined)).toBeNull();
   });
 });
 

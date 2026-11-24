@@ -10,7 +10,7 @@ test('an admin switches the default model in under two minutes', async ({ page }
   await page.goto('/login');
   await page.getByPlaceholder('nama@email.com').fill(E2E_ADMIN.email);
   await page.getByPlaceholder('Masukkan kata sandi').fill(E2E_ADMIN.password);
-  await page.getByRole('button', { name: /Masuk ke Studio/ }).click();
+  await page.getByRole('button', { name: 'Masuk', exact: true }).click();
   await expect(page).toHaveURL(/\/(admin|creator)\//, { timeout: 30_000 });
 
   await page.goto('/admin/models');

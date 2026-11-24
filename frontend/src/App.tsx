@@ -10,6 +10,7 @@ import { AdminLayout } from './layouts/AdminLayout';
 import { LandingPage } from './pages/public/LandingPage';
 import { Login } from './pages/public/Login';
 import { Register } from './pages/public/Register';
+import { ResetPassword } from './pages/public/ResetPassword';
 import { PrivacyPolicy } from './pages/public/PrivacyPolicy';
 import { TermsOfService } from './pages/public/TermsOfService';
 import { Dashboard as CreatorDashboard } from './pages/creator/Dashboard';
@@ -43,6 +44,7 @@ export const App: React.FC = () => {
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/privasi" element={<PrivacyPolicy />} />
               <Route path="/syarat" element={<TermsOfService />} />
             </Route>

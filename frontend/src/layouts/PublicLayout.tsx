@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, Outlet } from 'react-router-dom';
-import { MessageCircle, Mail, Instagram } from 'lucide-react';
+import { Mail, Instagram } from 'lucide-react';
 import { LogoIcon } from '../components/common/Logo';
 import { homePathForRole, useAuth } from '../auth/AuthProvider';
 
@@ -184,15 +184,6 @@ export const PublicLayout: React.FC = () => {
                 HUBUNGI KAMI
               </h2>
               <div className="flex flex-col gap-2.5 text-xs text-slate-300">
-                <a
-                  href="https://wa.me/6281234567890"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-slate-700 transition-colors w-fit"
-                >
-                  <MessageCircle className="w-3.5 h-3.5 text-[#2563EB]" />
-                  <span>WhatsApp: <strong className="text-white">+62 812-3456-7890</strong></span>
-                </a>
                 <a
                   href="mailto:kontak@sukamenak.org"
                   className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-slate-700 transition-colors w-fit"

@@ -31,7 +31,14 @@ export async function listActiveModels(capability: Capability): Promise<ModelCon
       ORDER BY is_default DESC, priority ASC, created_at ASC`,
     [capability],
   );
-  return rows.filter((m) => m.provider === 'mock' || !m.api_key_env || readProviderKey(m.api_key_env) !== undefined);
+  return (
+    rows
+      .filter((m) => m.provider === 'mock' || !m.api_key_env || readProviderKey(m.api_key_env) !== undefined)
+      // Mock rows last, whatever their priority: the seeded mock default must never shadow a real model an
+      // admin has activated and keyed, or the platform renders placeholder images while looking configured.
+      // Array#sort is stable, so the database order is kept inside each group.
+      .sort((a, b) => Number(a.provider === 'mock') - Number(b.provider === 'mock'))
+  );
 }
 
 export type AdapterMethod = 'improveText' | 'analyzeReference' | 'generateImage';

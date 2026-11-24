@@ -277,3 +277,104 @@ describe('video deletion rules', () => {
     expect(asset.rows[0]?.deleted_at).toBeTruthy();
   });
 });
+
+/**
+ * Editing an existing video: the job is re-queued with a new cut length, keeps its id and its place in
+ * today's quota, and the replaced file is freed.
+ */
+describe('video editing rules', () => {
+  let owner: TestSession;
+  let stranger: TestSession;
+  let poster: string;
+  let jobId: string;
+  let firstAssetId: string;
+
+  const edit = (session: TestSession, id: string, body: Record<string, unknown>) =>
+    api().patch(`/api/v1/videos/${id}`).set(bearer(session.accessToken)).send(body);
+
+  beforeAll(async () => {
+    owner = await registerUser();
+    stranger = await registerUser();
+    const ref = await createReferenceId(owner, 'product', '#2255aa');
+    const gen = await postGeneration(owner, {
+      template_slug: 'poster-promo-produk',
+      reference_ids: [ref],
+      slot_values: { title: 'Promo Kopi', product: 'kopi arabika', cta: 'Pesan sekarang' },
+    });
+    expect(gen.status).toBe(202);
+    expect((await settle(owner, gen.body.data.id)).status).toBe('done');
+    poster = gen.body.data.id as string;
+
+    const created = await createVideo(owner, poster, { duration_seconds: 6 });
+    expect(created.status).toBe(202);
+    await awaitVideoQueueIdle();
+    jobId = created.body.data.id as string;
+    const row = await pool.query<{ result_asset_id: string; duration_seconds: number }>(
+      'SELECT result_asset_id, duration_seconds FROM video_jobs WHERE id = $1',
+      [jobId],
+    );
+    firstAssetId = row.rows[0]!.result_asset_id;
+    expect(row.rows[0]!.duration_seconds).toBe(6);
+  });
+
+  it("re-renders the same job with a new duration and frees the replaced file", async () => {
+    const res = await edit(owner, jobId, { duration_seconds: 12 });
+    expect(res.status).toBe(202);
+    expect(res.body.data).toMatchObject({ id: jobId, status: 'queued', duration_seconds: 12 });
+
+    await awaitVideoQueueIdle();
+    const detail = await video(owner, jobId);
+    expect(detail.body.data).toMatchObject({ status: 'done', duration_seconds: 12, progress: 100 });
+    expect(detail.body.data.video_url).toMatch(/\/api\/v1\/files\/videos\//);
+
+    const row = await pool.query<{ result_asset_id: string }>(
+      'SELECT result_asset_id FROM video_jobs WHERE id = $1',
+      [jobId],
+    );
+    expect(row.rows[0]!.result_asset_id).not.toBe(firstAssetId);
+    const oldAsset = await pool.query<{ deleted_at: Date | null }>(
+      'SELECT deleted_at FROM assets WHERE id = $1',
+      [firstAssetId],
+    );
+    expect(oldAsset.rows[0]?.deleted_at).toBeTruthy();
+
+    // One job is one slot in the daily quota, however many times it is re-rendered.
+    const quota = await api().get('/api/v1/videos/quota').set(bearer(owner.accessToken));
+    expect(quota.body.data.used).toBe(1);
+  });
+
+  it("is invisible to another user: 404, and nothing changes", async () => {
+    const res = await edit(stranger, jobId, { duration_seconds: 10 });
+    expect(res.status).toBe(404);
+    const row = await pool.query<{ duration_seconds: number }>(
+      'SELECT duration_seconds FROM video_jobs WHERE id = $1',
+      [jobId],
+    );
+    expect(row.rows[0]?.duration_seconds).toBe(12);
+  });
+
+  it("refuses a duration outside the allowed range", async () => {
+    const tooLong = await edit(owner, jobId, { duration_seconds: 30 });
+    expect(tooLong.status).toBe(400);
+    expect(tooLong.body.error_code).toBe('VALIDATION_ERROR');
+    expect((await edit(owner, jobId, { duration_seconds: 1 })).status).toBe(400);
+    expect((await edit(owner, jobId, {})).status).toBe(400);
+  });
+
+  it("refuses to edit a job that is queued or rendering", async () => {
+    const active = await pool.query<{ id: string }>(
+      `INSERT INTO video_jobs (generation_id, user_id, props, duration_seconds, status)
+       SELECT generation_id, user_id, props, duration_seconds, 'rendering' FROM video_jobs WHERE id = $1
+       RETURNING id`,
+      [jobId],
+    );
+    const res = await edit(owner, active.rows[0]!.id, { duration_seconds: 9 });
+    expect(res.status).toBe(409);
+    expect(res.body.error_code).toBe('VIDEO_STILL_RENDERING');
+  });
+
+  it("rejects malformed ids and unknown jobs", async () => {
+    expect((await edit(owner, 'nope', { duration_seconds: 9 })).status).toBe(400);
+    expect((await edit(owner, uuid(), { duration_seconds: 9 })).status).toBe(404);
+  });
+});

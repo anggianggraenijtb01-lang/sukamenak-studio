@@ -1,11 +1,15 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
+import { env } from '../../config/env.js';
 import { queryOne } from '../../db/pool.js';
 import { withTx } from '../../db/tx.js';
 import { sha256Hex } from '../../lib/crypto.js';
 import { AppError, unauthorized } from '../../lib/errors.js';
 import { ACCESS_TTL_SECONDS, signAccessToken, signRefreshToken, verifyRefreshToken, type Role } from '../../lib/jwt.js';
+import { logger } from '../../lib/logger.js';
 import { hashPassword, verifyAgainstDummy, verifyPassword } from '../../lib/password.js';
+import { sendMail } from '../../mail/index.js';
+import { invalidateUserCache } from '../../middleware/auth.js';
 import { toUserDTO, type SessionDTO, type UserRow } from './dto.js';
 
 interface UserAuthRow extends UserRow {
@@ -172,6 +176,74 @@ export async function logout(presentedToken: string | undefined): Promise<void> 
 
 export async function revokeAllSessions(client: PoolClient, userId: string): Promise<void> {
   await client.query('UPDATE refresh_tokens SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL', [userId]);
+}
+
+/**
+ * "Lupa sandi": emails a one-time link to an active account. Unknown, inactive or deleted emails
+ * return silently, and the mail is sent in the background, so neither the response nor its timing
+ * reveals whether the account exists. A new request supersedes the user's earlier unused links.
+ */
+export async function requestPasswordReset(email: string, requestedIp?: string): Promise<void> {
+  const user = await queryOne<{ id: string; email: string; name: string }>(
+    'SELECT id, email, name FROM users WHERE email = $1 AND is_active AND deleted_at IS NULL',
+    [email],
+  );
+  if (!user) return;
+
+  const token = randomBytes(32).toString('base64url');
+  await withTx(async (client) => {
+    await client.query('UPDATE password_resets SET used_at = now() WHERE user_id = $1 AND used_at IS NULL', [user.id]);
+    await client.query(
+      `INSERT INTO password_resets (user_id, token_hash, expires_at, requested_ip)
+       VALUES ($1, $2, now() + make_interval(mins => $3), $4)`,
+      [user.id, sha256Hex(token), env.PASSWORD_RESET_TTL_MINUTES, requestedIp ?? null],
+    );
+  });
+
+  const link = `${env.APP_PUBLIC_URL}/reset-password?token=${token}`;
+  void sendMail({
+    to: user.email,
+    subject: 'Atur ulang kata sandi Sukamenak Studio',
+    text: [
+      `Halo ${user.name},`,
+      '',
+      'Kami menerima permintaan untuk mengatur ulang kata sandi akun Anda. Buka tautan berikut untuk membuat kata sandi baru:',
+      '',
+      link,
+      '',
+      `Tautan ini hanya bisa dipakai sekali dan berlaku ${env.PASSWORD_RESET_TTL_MINUTES} menit.`,
+      'Jika Anda tidak meminta ini, abaikan email ini. Kata sandi Anda tidak akan berubah.',
+    ].join('\n'),
+  }).catch((err: unknown) => logger.error({ err, userId: user.id }, 'Password reset mail failed'));
+}
+
+/**
+ * Sets a new password from an emailed token. The token must be unused and unexpired; using it
+ * also voids the user's other open links and signs out every existing session.
+ */
+export async function consumePasswordReset(token: string, newPassword: string): Promise<void> {
+  const passwordHash = await hashPassword(newPassword);
+  const userId = await withTx(async (client) => {
+    const { rows } = await client.query<{ user_id: string }>(
+      `UPDATE password_resets SET used_at = now()
+        WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()
+        RETURNING user_id`,
+      [sha256Hex(token)],
+    );
+    const row = rows[0];
+    if (!row) return null;
+    const updated = await client.query(
+      `UPDATE users SET password_hash = $2, sessions_valid_after = $3, updated_by = id
+        WHERE id = $1 AND is_active AND deleted_at IS NULL`,
+      [row.user_id, passwordHash, new Date()],
+    );
+    if (updated.rowCount === 0) return null;
+    await client.query('UPDATE password_resets SET used_at = now() WHERE user_id = $1 AND used_at IS NULL', [row.user_id]);
+    await revokeAllSessions(client, row.user_id);
+    return row.user_id;
+  });
+  if (!userId) throw new AppError('INVALID_RESET_TOKEN', 'Tautan atur ulang kata sandi tidak valid atau sudah kedaluwarsa');
+  invalidateUserCache(userId);
 }
 
 export type { Role };

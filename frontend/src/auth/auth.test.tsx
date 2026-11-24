@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { apiClient } from '../api/client';
-import { AuthProvider, useAuth } from './AuthProvider';
+import { AuthProvider, homePathForRole, useAuth } from './AuthProvider';
 import { RequireAuth, RequireRole } from './guards';
 
 type Role = 'creator' | 'admin';
@@ -76,6 +76,13 @@ function renderApp(initial: string, strict = false) {
 afterEach(() => {
   apiClient.clearSession();
   vi.unstubAllGlobals();
+});
+
+describe('homePathForRole', () => {
+  it('sends a creator to the dashboard (not the studio) and an admin to the admin dashboard', () => {
+    expect(homePathForRole('creator')).toBe('/creator/dashboard');
+    expect(homePathForRole('admin')).toBe('/admin/dashboard');
+  });
 });
 
 describe('AuthProvider start-up', () => {

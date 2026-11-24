@@ -15,7 +15,6 @@ import {
   Sliders,
   LogOut,
   Mail,
-  MessageCircle,
   ChevronDown,
   User,
   ScrollText,
@@ -230,15 +229,6 @@ export const AdminLayout: React.FC = () => {
                 BANTUAN TEKNIS
               </h2>
               <div className="flex flex-col gap-2 text-xs text-slate-300">
-                <a
-                  href="https://wa.me/6281234567890"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-slate-700 transition-colors"
-                >
-                  <MessageCircle className="w-3.5 h-3.5 text-[#2563EB]" />
-                  <span>WhatsApp (+62 812-3456-7890)</span>
-                </a>
                 <a
                   href="mailto:kontak@sukamenak.org"
                   className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-slate-700 transition-colors"

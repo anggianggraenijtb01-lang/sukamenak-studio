@@ -1,6 +1,7 @@
 node_modules
 dist
 /storage
+/var
 .env
 coverage
 test-results.json

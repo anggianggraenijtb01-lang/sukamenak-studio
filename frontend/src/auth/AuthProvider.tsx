@@ -41,7 +41,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 /** Where a user of this role lands after signing in. */
 export function homePathForRole(role: Role): string {
-  return role === 'admin' ? '/admin/dashboard' : '/creator/studio';
+  return role === 'admin' ? '/admin/dashboard' : '/creator/dashboard';
 }
 
 const NOTICE_EXPIRED = 'Sesi Anda berakhir. Silakan masuk kembali.';

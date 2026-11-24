@@ -377,7 +377,7 @@ export function createApiClient(options: ApiClientOptions = {}) {
   const post = <T>(path: string, body?: unknown, signal?: AbortSignal) => request<T>(path, { method: 'POST', body, signal });
   const patch = <T>(path: string, body: unknown, signal?: AbortSignal) => request<T>(path, { method: 'PATCH', body, signal });
   const del = <T>(path: string, body?: unknown, signal?: AbortSignal) => request<T>(path, { method: 'DELETE', body, signal });
-  const upload = <T>(path: string, formData: FormData, opts: { method?: 'POST' | 'PATCH'; signal?: AbortSignal } = {}) =>
+  const upload = <T>(path: string, formData: FormData, opts: { method?: 'POST' | 'PATCH' | 'PUT'; signal?: AbortSignal } = {}) =>
     request<T>(path, { method: opts.method ?? 'POST', formData, signal: opts.signal });
 
   /**

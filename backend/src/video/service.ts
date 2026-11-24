@@ -5,7 +5,7 @@ import { AppError, notFound } from '../lib/errors.js';
 import { getSettings } from '../modules/shared/settings.js';
 import { softDeleteAssets } from '../storage/assets.js';
 import { VIDEO_JOB_SELECT, toVideoJobDTO, type VideoJobRow } from './dto.js';
-import { buildVideoJobProps, type ZoneRow } from './props.js';
+import { buildVideoJobProps, type VideoJobProps, type ZoneRow } from './props.js';
 import { getVideoQueue } from './queue.js';
 
 /** Columns needed to answer "does this job belong to the caller?" without selecting `props`. */
@@ -62,14 +62,11 @@ interface GenerationRow {
  * poster the creator approved. The unique index on video_jobs is what actually prevents a double
  * enqueue; the check here is only for a clean error message.
  */
-export async function createVideoJob(
-  userId: string,
-  generationId: string,
-  opts: { durationSeconds?: number } = {},
-): Promise<{ id: string; status: string }> {
-  assertEnabled();
-
-  const gen = await queryOne<GenerationRow>(
+/** Loads the poster a job renders from. Eligibility rules stay in the callers: create is strict,
+ * re-render only needs the poster to still exist.
+ */
+async function loadGeneration(generationId: string): Promise<GenerationRow | null> {
+  return queryOne<GenerationRow>(
     `SELECT g.id, g.user_id, g.status, g.composited_text, g.slot_values, g.template_id,
             a.storage_key AS result_key
        FROM generations g
@@ -77,19 +74,27 @@ export async function createVideoJob(
       WHERE g.id = $1 AND g.deleted_at IS NULL`,
     [generationId],
   );
-  // Someone else's generation is a 404, never a 403 (same rule as GET /generations/:id).
-  if (!gen || gen.user_id !== userId) throw notFound('Pembuatan gambar');
-  if (gen.status !== 'done') throw new AppError('VIDEO_NOT_ELIGIBLE', 'Video hanya bisa dibuat dari pembuatan gambar yang sudah selesai');
-  if (!gen.composited_text) throw new AppError('VIDEO_NOT_ELIGIBLE', 'Pembuatan gambar ini tidak memiliki teks yang bisa dianimasikan');
-  if (!gen.result_key) throw new AppError('VIDEO_NOT_ELIGIBLE', 'Hasil gambar tidak tersedia');
+}
 
-  const duration = opts.durationSeconds ?? DEFAULT_VIDEO_DURATION;
+/** Duration bounds live here so the route schema cannot disagree with the service. The upper bound is
+ * the deploy-time VIDEO_MAX_DURATION_SECONDS.
+ */
+function resolveDuration(seconds?: number): number {
+  const duration = seconds ?? DEFAULT_VIDEO_DURATION;
   if (duration > env.VIDEO_MAX_DURATION_SECONDS) {
     throw invalid('duration_seconds', `Durasi maksimal ${env.VIDEO_MAX_DURATION_SECONDS} detik`);
   }
   if (duration < MIN_VIDEO_DURATION) {
     throw invalid('duration_seconds', `Durasi minimal ${MIN_VIDEO_DURATION} detik`);
   }
+  return duration;
+}
+
+/** Poster key, slot text, palette and brand. Rebuilt from the live rows on every render, so a re-render
+ * never animates text the poster no longer shows.
+ */
+async function buildPropsForGeneration(gen: GenerationRow, durationSeconds: number): Promise<VideoJobProps> {
+  if (!gen.result_key) throw new AppError('VIDEO_NOT_ELIGIBLE', 'Hasil gambar tidak tersedia');
 
   const zones = gen.template_id
     ? await query<ZoneRow>(
@@ -106,15 +111,34 @@ export async function createVideoJob(
   );
   const palette = Array.isArray(brand?.palette) ? (brand.palette as unknown[]).filter((c): c is string => typeof c === 'string') : [];
 
-  const props = buildVideoJobProps({
+  return buildVideoJobProps({
     posterKey: gen.result_key,
     zones,
     values: gen.slot_values ?? {},
     palette,
-    durationSeconds: duration,
+    durationSeconds,
     watermark: settings.watermark_enabled,
     brandName: brand?.name ?? 'Sukamenak Studio',
   });
+}
+
+export async function createVideoJob(
+  userId: string,
+  generationId: string,
+  opts: { durationSeconds?: number } = {},
+): Promise<{ id: string; status: string }> {
+  assertEnabled();
+
+  const gen = await loadGeneration(generationId);
+  // Someone else's generation is a 404, never a 403 (same rule as GET /generations/:id).
+  if (!gen || gen.user_id !== userId) throw notFound('Pembuatan gambar');
+  if (gen.status !== 'done') throw new AppError('VIDEO_NOT_ELIGIBLE', 'Video hanya bisa dibuat dari pembuatan gambar yang sudah selesai');
+  if (!gen.composited_text) throw new AppError('VIDEO_NOT_ELIGIBLE', 'Pembuatan gambar ini tidak memiliki teks yang bisa dianimasikan');
+  if (!gen.result_key) throw new AppError('VIDEO_NOT_ELIGIBLE', 'Hasil gambar tidak tersedia');
+
+  const duration = resolveDuration(opts.durationSeconds);
+
+  const props = await buildPropsForGeneration(gen, duration);
 
   const id = await withTx(async (client) => {
     // Serialise per user so two clicks cannot both pass the quota check.
@@ -150,6 +174,61 @@ export async function createVideoJob(
 
   await getVideoQueue().enqueue(id);
   return { id, status: 'queued' };
+}
+
+/**
+ * Re-renders one of the caller's own videos after an edit. The reel's text comes from the poster, so the
+ * only per-video property a creator can change here is the cut length; text and layout change by
+ * re-rendering the poster. The job keeps its row (and its place in today's quota) and is re-queued.
+ *
+ * The previous file is replaced, not versioned: one job row owns one asset.
+ */
+export async function updateMyVideoJob(
+  userId: string,
+  id: string,
+  opts: { durationSeconds: number },
+): Promise<{ id: string; status: string; duration_seconds: number }> {
+  assertEnabled();
+  const duration = resolveDuration(opts.durationSeconds);
+
+  const row = await queryOne<{ user_id: string; status: string; generation_id: string; result_asset_id: string | null }>(
+    'SELECT user_id, status, generation_id, result_asset_id FROM video_jobs WHERE id = $1 AND deleted_at IS NULL',
+    [id],
+  );
+  // Another creator's job is a 404, never a 403 (same rule as GET /videos/:id).
+  if (!row || row.user_id !== userId) throw notFound('Video');
+  if (row.status === 'queued' || row.status === 'rendering') {
+    throw new AppError('VIDEO_STILL_RENDERING', 'Video masih dibuat. Tunggu sampai selesai sebelum mengubahnya');
+  }
+
+  const gen = await loadGeneration(row.generation_id);
+  if (!gen || gen.status !== 'done') {
+    throw new AppError('VIDEO_NOT_ELIGIBLE', 'Poster sumber video ini sudah tidak tersedia');
+  }
+  const props = await buildPropsForGeneration(gen, duration);
+
+  await withTx(async (client) => {
+    // Same per-user lock as createVideoJob: an edit cannot slip in while a render is starting.
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [`video:${userId}`]);
+
+    const updated = await client.query(
+      `UPDATE video_jobs
+          SET props = $2, duration_seconds = $3, status = 'queued', progress = 0, error_code = NULL,
+              render_ms = NULL, started_at = NULL, finished_at = NULL, attempts = 0, result_asset_id = NULL
+        WHERE id = $1 AND status IN ('done', 'failed') AND deleted_at IS NULL`,
+      [id, JSON.stringify(props), duration],
+    );
+    // Lost the race against a render that started between the read above and this update.
+    if ((updated.rowCount ?? 0) === 0) {
+      throw new AppError('VIDEO_STILL_RENDERING', 'Video masih dibuat. Tunggu sampai selesai sebelum mengubahnya');
+    }
+  });
+
+  // The row no longer points at the old file, so free it now instead of leaving an orphan on disk.
+  if (row.result_asset_id) await softDeleteAssets([row.result_asset_id]).catch(() => undefined);
+
+  await getVideoQueue().enqueue(id);
+  return { id, status: 'queued', duration_seconds: duration };
 }
 
 export async function getMyVideoJob(userId: string, id: string): Promise<ReturnType<typeof toVideoJobDTO>> {

@@ -6,6 +6,7 @@ import type { ImageInput } from '../../providers/types.js';
 import { getStorage } from '../../storage/index.js';
 import type { PipelineContext } from '../context.js';
 import { PipelineError } from '../errors.js';
+import { resolveModels } from '../../providers/registry.js';
 import { callWithFallback } from '../modelCall.js';
 
 export interface LoadedReference {
@@ -70,6 +71,19 @@ export interface AnalysisOutcome {
   failureCode: string | null;
 }
 
+/**
+ * True when the only vision models available are mock ones AND a real image model will render the result:
+ * the analysis would add invented descriptions to a prompt that a real model then follows.
+ */
+async function mockVisionWouldMislead(mode: string): Promise<boolean> {
+  const [vision, image] = await Promise.all([
+    resolveModels('vision').catch(() => []),
+    resolveModels(mode === 'i2i' ? 'i2i' : 't2i').catch(() => []),
+  ]);
+  const mockOnly = (list: { provider: string }[]): boolean => list.length > 0 && list.every((m) => m.provider === 'mock');
+  return mockOnly(vision) && image.some((m) => m.provider !== 'mock');
+}
+
 function markDegraded(outcome: AnalysisOutcome, code: string): void {
   outcome.degraded = true;
   outcome.failureCode ??= code;
@@ -82,6 +96,13 @@ function markDegraded(outcome: AnalysisOutcome, code: string): void {
  */
 export async function runAnalysis(ctx: PipelineContext, references: LoadedReference[]): Promise<AnalysisOutcome> {
   const outcome: AnalysisOutcome = { analysis: {}, costUsd: 0, modelConfigId: null, degraded: false, failureCode: null };
+  if (references.length === 0) return outcome;
+  // The mock vision adapter invents colour words from the image. Harmless while the mock renderer draws the
+  // picture too, but it would be injected into a real model's prompt as fact, so analysis is skipped then.
+  if (await mockVisionWouldMislead(ctx.gen.mode)) {
+    markDegraded(outcome, 'VISION_UNAVAILABLE');
+    return outcome;
+  }
 
   for (const ref of references) {
     const slot = ctx.template.slots.find((s) => s.vision_role === ref.role && s.blank_index !== null);

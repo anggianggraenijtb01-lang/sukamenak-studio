@@ -113,6 +113,11 @@ export interface User {
   role: Role;
   last_login_at: IsoDateTime | null;
   created_at: IsoDateTime;
+  /**
+   * Public URL of the profile photo, `null` when none is set. Optional because older payloads (and the
+   * admin user list) may omit it; treat `undefined` the same as `null`.
+   */
+  avatar_url?: string | null;
 }
 
 /** Answer of register, login and refresh (and `session` of a password change). */
@@ -139,6 +144,31 @@ export interface LoginRequest {
 
 export interface LogoutResponse {
   logged_out: true;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+/** Always `sent: true`, whether or not the address has an account (no account enumeration). */
+export interface ForgotPasswordResponse {
+  sent: true;
+}
+
+export interface ResetPasswordRequest {
+  /** The token from the emailed link (`/reset-password?token=...`). */
+  token: string;
+  /** 8 to 72 bytes. */
+  new_password: string;
+}
+
+export interface ResetPasswordResponse {
+  reset: true;
+}
+
+/** Answer of `PUT /me/avatar` and `DELETE /me/avatar`. */
+export interface AvatarResponse {
+  user: User;
 }
 
 // ---------------------------------------------------------------------------------------------------

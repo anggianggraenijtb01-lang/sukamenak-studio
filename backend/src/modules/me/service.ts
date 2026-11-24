@@ -5,14 +5,22 @@ import { withTx } from '../../db/tx.js';
 import { AppError, forbidden, notFound } from '../../lib/errors.js';
 import { hashPassword, verifyPassword } from '../../lib/password.js';
 import { invalidateUserCache } from '../../middleware/auth.js';
-import { toUserDTO, type SessionDTO, type UserRow } from '../auth/dto.js';
+import { createAsset, softDeleteAssets } from '../../storage/assets.js';
+import { processUploadedImage } from '../../storage/image.js';
+import type { SessionDTO } from '../auth/dto.js';
 import { revokeAllSessions, startSession } from '../auth/service.js';
+import { toMeUserDTO, type MeUserDTO, type MeUserRow } from './dto.js';
 import { getUsage, type UsageSummary } from './usage.js';
 
-const USER_COLUMNS = 'id, email, name, role, is_active, last_login_at, created_at';
+/**
+ * Selected from `users` (also usable in UPDATE ... RETURNING). The avatar key is a correlated
+ * subquery so a soft-deleted asset reads as "no avatar".
+ */
+const USER_COLUMNS = `id, email, name, role, is_active, last_login_at, created_at,
+  (SELECT a.storage_key FROM assets a WHERE a.id = users.avatar_asset_id AND a.deleted_at IS NULL) AS avatar_storage_key`;
 
-async function loadUser(userId: string): Promise<UserRow> {
-  const row = await queryOne<UserRow & { deleted_at: Date | null }>(
+async function loadUser(userId: string): Promise<MeUserRow> {
+  const row = await queryOne<MeUserRow & { deleted_at: Date | null }>(
     `SELECT ${USER_COLUMNS}, deleted_at FROM users WHERE id = $1`,
     [userId],
   );
@@ -20,9 +28,53 @@ async function loadUser(userId: string): Promise<UserRow> {
   return row;
 }
 
-export async function getMe(userId: string): Promise<{ user: ReturnType<typeof toUserDTO>; usage: UsageSummary }> {
+export async function getMe(userId: string): Promise<{ user: MeUserDTO; usage: UsageSummary }> {
   const [user, usage] = await Promise.all([loadUser(userId), getUsage(userId)]);
-  return { user: toUserDTO(user), usage };
+  return { user: toMeUserDTO(user), usage };
+}
+
+/** Points the user at `assetId` (null clears it) and returns the avatar asset it replaced. */
+async function swapAvatar(userId: string, assetId: string | null): Promise<string | null> {
+  return withTx(async (client) => {
+    const { rows } = await client.query<{ avatar_asset_id: string | null }>(
+      'SELECT avatar_asset_id FROM users WHERE id = $1 AND deleted_at IS NULL FOR UPDATE',
+      [userId],
+    );
+    const before = rows[0];
+    if (!before) throw notFound('Pengguna');
+    await client.query('UPDATE users SET avatar_asset_id = $2, updated_by = id WHERE id = $1', [userId, assetId]);
+    return before.avatar_asset_id;
+  });
+}
+
+/** Stores a sanitised copy of the upload as the profile photo; the replaced photo and its file are removed. */
+export async function setAvatar(userId: string, upload: Buffer): Promise<{ user: MeUserDTO }> {
+  const image = await processUploadedImage(upload);
+  const asset = await createAsset({
+    buffer: image.buffer,
+    mime: image.mime,
+    width: image.width,
+    height: image.height,
+    kind: 'avatar',
+    prefix: 'avatars',
+    ownerId: userId,
+  });
+  let previous: string | null;
+  try {
+    previous = await swapAvatar(userId, asset.id);
+  } catch (err) {
+    await softDeleteAssets([asset.id]).catch(() => undefined);
+    throw err;
+  }
+  await softDeleteAssets([previous]);
+  return { user: toMeUserDTO(await loadUser(userId)) };
+}
+
+/** Removes the profile photo; a user without one gets the same response. */
+export async function clearAvatar(userId: string): Promise<{ user: MeUserDTO }> {
+  const previous = await swapAvatar(userId, null);
+  await softDeleteAssets([previous]);
+  return { user: toMeUserDTO(await loadUser(userId)) };
 }
 
 export interface UpdateMeInput {
@@ -35,7 +87,7 @@ export interface UpdateMeInput {
 export async function updateMe(
   userId: string,
   input: UpdateMeInput,
-): Promise<{ user: ReturnType<typeof toUserDTO>; session?: { dto: SessionDTO; refreshToken: string } }> {
+): Promise<{ user: MeUserDTO; session?: { dto: SessionDTO; refreshToken: string } }> {
   if (input.new_password !== undefined) {
     const current = await queryOne<{ password_hash: string }>('SELECT password_hash FROM users WHERE id = $1', [userId]);
     if (!current || !(await verifyPassword(input.current_password ?? '', current.password_hash))) {
@@ -45,7 +97,7 @@ export async function updateMe(
   const newHash = input.new_password !== undefined ? await hashPassword(input.new_password) : null;
 
   const result = await withTx(async (client) => {
-    const { rows } = await client.query<UserRow>(
+    const { rows } = await client.query<MeUserRow>(
       `UPDATE users
           SET name = COALESCE($2, name),
               password_hash = COALESCE($3, password_hash),
@@ -65,7 +117,7 @@ export async function updateMe(
   });
 
   invalidateUserCache(userId);
-  return { user: toUserDTO(result.user), session: result.session };
+  return { user: toMeUserDTO(result.user), session: result.session };
 }
 
 /** Everything we hold about the user (UU PDP data portability). Contains no final prompts or secrets. */
@@ -91,7 +143,7 @@ export async function exportMyData(userId: string): Promise<Record<string, unkno
   ]);
   return {
     exported_at: new Date().toISOString(),
-    profile: toUserDTO(user),
+    profile: toMeUserDTO(user),
     generations,
     saved_prompts: savedPrompts,
     prompt_improvements: improvements,
@@ -131,6 +183,7 @@ export async function anonymizeUser(client: PoolClient, userId: string, unusable
             password_hash = $2,
             is_active = false,
             daily_limit_override = NULL,
+            avatar_asset_id = NULL,
             deleted_at = now()
       WHERE id = $1`,
     [userId, unusableHash],

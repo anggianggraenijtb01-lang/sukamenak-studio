@@ -64,6 +64,14 @@ const schema = z
     BCRYPT_COST: intFromString(12, 4),
     COOKIE_SECURE: boolish.optional(),
     AUTH_USER_CACHE_TTL_MS: intFromString(5000),
+    /** Lifetime of an emailed "lupa sandi" link. */
+    PASSWORD_RESET_TTL_MINUTES: intFromString(60, 1),
+    /** Origin of the web app; reset links point at `${APP_PUBLIC_URL}/reset-password`. */
+    APP_PUBLIC_URL: optionalString.transform((v) => (v ?? 'http://localhost:5173').replace(/\/+$/, '')),
+
+    /** Resend API key. Unset: mail is written to backend/var/outbox instead of being sent. */
+    RESEND_API_KEY: optionalString,
+    MAIL_FROM: optionalString.transform((v) => v ?? 'Sukamenak Studio <no-reply@sukamenak.studio>'),
 
     CORE_PROMPT_KEY: z.string().min(1),
 

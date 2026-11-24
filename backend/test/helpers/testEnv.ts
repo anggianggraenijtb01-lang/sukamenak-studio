@@ -44,6 +44,9 @@ export const testEnv: Record<string, string> = {
   CORE_PROMPT_KEY: Buffer.alloc(32, 7).toString('base64'),
   BCRYPT_COST: '4',
   AUTH_USER_CACHE_TTL_MS: '0',
+  // Never reach Resend from tests, whatever the developer's .env holds.
+  RESEND_API_KEY: '',
+  APP_PUBLIC_URL: 'http://localhost:5173',
   RATE_LIMIT_PER_MINUTE: '100000',
   AUTH_RATE_LIMIT_PER_MINUTE: '100000',
   IMPROVE_RATE_LIMIT_PER_MINUTE: '100000',

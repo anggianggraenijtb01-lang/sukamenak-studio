@@ -6,6 +6,7 @@
 import { apiClient, saveBlob } from './client';
 import type {
   AnalyzePromptRequest,
+  AvatarResponse,
   CreateGenerationRequest,
   CreateGenerationResponse,
   CreatePromptRequest,
@@ -66,6 +67,19 @@ export async function updateMe(body: UpdateMeRequest): Promise<UpdateMeResponse>
   if (res.session) apiClient.setSession(res.session as Session);
   return res;
 }
+
+/**
+ * `PUT /me/avatar` (multipart, field `avatar`): replaces the profile photo and answers the updated user.
+ * The browser sets the multipart Content-Type (with its boundary), so it is never set here.
+ */
+export function uploadAvatar(file: File | Blob, signal?: AbortSignal): Promise<AvatarResponse> {
+  const form = new FormData();
+  form.append('avatar', file);
+  return apiClient.upload<AvatarResponse>('/me/avatar', form, { method: 'PUT', signal });
+}
+
+/** `DELETE /me/avatar`: removes the profile photo and answers the updated user (`avatar_url: null`). */
+export const removeAvatar = () => apiClient.del<AvatarResponse>('/me/avatar');
 
 /** `GET /me/export`: everything stored about the user (UU PDP). */
 export const getMyDataExport = (signal?: AbortSignal) => apiClient.get<MyDataExport>('/me/export', undefined, signal);
@@ -190,3 +204,11 @@ export const listVideoJobs = (query?: MyVideosQuery, signal?: AbortSignal): Prom
 export const getVideoQuota = (signal?: AbortSignal) => apiClient.get<VideoQuota>('/videos/quota', undefined, signal);
 
 export const deleteVideoJob = (id: string) => apiClient.del<DeletedResponse>(`/videos/${id}`);
+
+/**
+ * `PATCH /videos/:id` re-renders the same job with a new cut length (202 `{ id, status: 'queued' }`).
+ * The reel text still comes from the poster, so this is the only per-video property that can change.
+ * Errors: `VIDEO_STILL_RENDERING`, `VIDEO_NOT_ELIGIBLE`, `VIDEO_DISABLED`.
+ */
+export const updateVideoJob = (id: string, body: { duration_seconds: number }) =>
+  apiClient.patch<CreateVideoResponse>(`/videos/${id}`, body);

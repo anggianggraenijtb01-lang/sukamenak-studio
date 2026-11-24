@@ -3,7 +3,7 @@ import { logger } from '../lib/logger.js';
 import { getStorage } from './index.js';
 import { newStorageKey } from './keys.js';
 
-export type AssetKind = 'reference' | 'result' | 'thumbnail' | 'preview' | 'gallery' | 'logo' | 'video' | 'other';
+export type AssetKind = 'reference' | 'result' | 'thumbnail' | 'preview' | 'gallery' | 'logo' | 'video' | 'avatar' | 'other';
 
 export interface AssetRecord {
   id: string;

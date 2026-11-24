@@ -29,6 +29,7 @@ Endpoint:
 | `GET /videos` | Milik sendiri, paginasi, filter `generation_id` |
 | `GET /videos/quota` | `{limit, used}` hari ini |
 | `GET /videos/:id` | Detail + `video_url` / `thumbnail_url` bertanda tangan |
+| `PATCH /videos/:id` | Ubah durasi (`{duration_seconds}`) lalu render ulang job yang sama (202). File lama dihapus, kuota tidak bertambah. Job `queued`/`rendering` ditolak (`VIDEO_STILL_RENDERING`). |
 | `DELETE /videos/:id` | Soft delete + hapus file. Job `queued`/`rendering` ditolak (`VIDEO_STILL_RENDERING`). `DELETE /generations/:id` juga ditolak (`VIDEO_STILL_RENDERING`) selama ada videonya yang aktif; selain itu ikut menghapus semua videonya |
 
 Error: `VIDEO_DISABLED` (503), `VIDEO_NOT_ELIGIBLE` (422), `VIDEO_ALREADY_RUNNING` (409), `VIDEO_STILL_RENDERING` (409),

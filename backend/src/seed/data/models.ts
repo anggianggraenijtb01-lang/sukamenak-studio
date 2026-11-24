@@ -28,7 +28,9 @@ const MOCK: SeedModel[] = (
   model_id,
   is_active: true,
   is_default: true,
-  priority: 100,
+  // High on purpose: `listActiveModels` sorts by is_default then priority, so an activated real model has to be
+  // able to overtake the mock default (`npm run models:activate`) instead of always losing to it.
+  priority: 900,
   notes: 'Key-less deterministic provider for development and tests (default per PRD open question Q-01).',
 }));
 

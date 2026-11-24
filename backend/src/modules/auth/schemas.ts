@@ -19,6 +19,18 @@ export const registerSchemas = {
   }),
 };
 
+export const forgotPasswordSchemas = {
+  body: z.object({ email }),
+};
+
+export const resetPasswordSchemas = {
+  body: z.object({
+    // Issued tokens are 43 base64url characters (32 bytes); the bounds only reject obvious junk.
+    token: z.string().trim().min(32, 'Token tidak valid').max(128, 'Token tidak valid'),
+    new_password: newPassword,
+  }),
+};
+
 export const loginSchemas = {
   body: z.object({
     email,

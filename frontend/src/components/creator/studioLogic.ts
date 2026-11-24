@@ -39,6 +39,72 @@ export function pickMode(template: Pick<TemplateListItem, 'mode'>, preferred?: s
   return modes.find((m) => m === preferred) ?? modes[0];
 }
 
+/**
+ * What the studio's mode dropdown selects: one of the two image modes (a `POST /generations`), or `video`
+ * (a reel rendered from an already finished poster via `POST /generations/:id/video`).
+ */
+export type StudioMode = GenerationMode | 'video';
+
+export interface StudioModeOption {
+  value: StudioMode;
+  label: string;
+  /** One line shown under the dropdown while this option is selected. */
+  help: string;
+}
+
+const STUDIO_MODE_OPTIONS: Record<StudioMode, StudioModeOption> = {
+  t2i: { value: 't2i', label: 'Teks ke Gambar', help: 'Desain dibuat dari isian dan deskripsi Anda, tanpa foto referensi.' },
+  i2i: { value: 'i2i', label: 'Foto ke Gambar', help: 'Unggah foto produk atau model; AI menyusun poster berdasarkan foto tersebut.' },
+  video: { value: 'video', label: 'Video (Reel)', help: 'Ubah poster yang sudah selesai menjadi video vertikal 9:16 untuk Reels, TikTok, dan Status WhatsApp.' },
+};
+
+/** Display order of the dropdown. */
+const STUDIO_MODE_ORDER: readonly StudioMode[] = ['t2i', 'i2i', 'video'];
+
+export const isImageMode = (mode: StudioMode): mode is GenerationMode => mode !== 'video';
+
+/** Reads `?mode=` of a deep link; anything unknown is `null`. */
+export function parseStudioMode(raw: string | null | undefined): StudioMode | null {
+  return raw === 't2i' || raw === 'i2i' || raw === 'video' ? raw : null;
+}
+
+/**
+ * Options of the mode dropdown. The image modes are narrowed to what the template allows (no template yet =
+ * no restriction known); video is always offered because it works on finished posters, not on the template.
+ */
+export function modeOptions(template: Pick<TemplateListItem, 'mode'> | null | undefined): StudioModeOption[] {
+  const images: readonly GenerationMode[] = template ? allowedModes(template) : ['i2i', 't2i'];
+  return STUDIO_MODE_ORDER.filter((m) => m === 'video' || images.includes(m)).map((m) => STUDIO_MODE_OPTIONS[m]);
+}
+
+export const studioModeOption = (mode: StudioMode): StudioModeOption => STUDIO_MODE_OPTIONS[mode];
+
+/** Like `pickMode`, but a video selection survives a template switch (the template does not restrict it). */
+export function pickStudioMode(template: Pick<TemplateListItem, 'mode'>, current: StudioMode | null | undefined): StudioMode {
+  return current === 'video' ? 'video' : pickMode(template, current);
+}
+
+// ---- video -----------------------------------------------------------------------------------------------
+
+/** Backend `MIN_VIDEO_DURATION`. */
+export const MIN_VIDEO_DURATION = 3;
+/** Default of `VIDEO_MAX_DURATION_SECONDS` (deploy-time; the server answers VALIDATION_ERROR above its value). */
+export const MAX_VIDEO_DURATION = 15;
+/** Backend `DEFAULT_VIDEO_DURATION`. */
+export const DEFAULT_VIDEO_DURATION = 15;
+
+/** A whole number of seconds inside the accepted range; garbage falls back to the default. */
+export function clampVideoDuration(value: unknown): number {
+  const n = typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN;
+  if (!Number.isFinite(n)) return DEFAULT_VIDEO_DURATION;
+  return Math.min(MAX_VIDEO_DURATION, Math.max(MIN_VIDEO_DURATION, Math.round(n)));
+}
+
+/** Videos left today (`null` while unknown), never negative. */
+export function videoQuotaLeft(quota: { limit: number; used: number } | null | undefined): number | null {
+  return quota ? Math.max(0, quota.limit - quota.used) : null;
+}
+
 /** The template to open when none was asked for: the first one that supports the preferred mode (default i2i). */
 export function pickDefaultTemplate<T extends Pick<TemplateListItem, 'mode' | 'subject'>>(
   templates: readonly T[],

@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, Loader2, RotateCcw, Sliders, Sparkles, ImageIcon, UserCheck } from 'lucide-react';
+import { ChevronDown, Clapperboard, Download, Loader2, RotateCcw, Sliders, Sparkles, ImageIcon, Type, UserCheck, type LucideIcon } from 'lucide-react';
 import { useMe } from '../../auth/AuthProvider';
 import { createGeneration, getTemplate, listTemplates } from '../../api/creator';
 import { fileUrl } from '../../api/client';
 import { getErrorMessage, isApiError } from '../../api/errors';
 import { queryKeys } from '../../api/queryKeys';
 import { useGenerationPolling } from '../../api/useGenerationPolling';
-import type { GenerationMode, ReferenceRole } from '../../api/types';
+import type { ReferenceRole } from '../../api/types';
 import { CompactnessBar } from '../../components/creator/CompactnessMeter';
 import { downloadImage } from '../../components/creator/download';
 import { aspectRatioValue, dimensionsLabel, generationTitle, resultFileName } from '../../components/creator/format';
@@ -29,22 +29,29 @@ import {
   defaultUploadRole,
   imageSlots,
   initialSlotValues,
+  isImageMode,
+  modeOptions,
   needsConsent,
   overlaySlots,
   parseMaxReferences,
+  parseStudioMode,
   pickDefaultTemplate,
-  pickMode,
+  pickStudioMode,
   referenceBadge,
   slotFieldName,
+  studioModeOption,
   submitBlock,
   validateSubmission,
+  type StudioMode,
 } from '../../components/creator/studioLogic';
 import { TemplatePicker } from '../../components/creator/TemplatePicker';
 import { useReferences } from '../../components/creator/useReferences';
+import { VideoStudioSection } from '../../components/creator/VideoStudioSection';
 
-const MODE_LABELS: Record<GenerationMode, string> = {
-  i2i: 'Foto ke Gambar (Utama)',
-  t2i: 'Teks ke Gambar',
+const MODE_ICONS: Record<StudioMode, LucideIcon> = {
+  t2i: Type,
+  i2i: ImageIcon,
+  video: Clapperboard,
 };
 
 interface SubmitProblem {
@@ -59,7 +66,9 @@ export const StudioGenerator: React.FC = () => {
   const remaining = me?.usage.remaining_today ?? null;
 
   const requestedSlug = searchParams.get('template');
-  const requestedMode = searchParams.get('mode') === 't2i' ? 't2i' : searchParams.get('mode') === 'i2i' ? 'i2i' : null;
+  const requestedMode = parseStudioMode(searchParams.get('mode'));
+  // The template default only cares about image modes; a video deep link opens the usual i2i template.
+  const requestedImageMode = requestedMode && isImageMode(requestedMode) ? requestedMode : null;
 
   // ---- template ----------------------------------------------------------------------------------------
   const templatesQuery = useQuery({
@@ -79,8 +88,8 @@ export const StudioGenerator: React.FC = () => {
     if (!templatesQuery.data) return;
     if (slug && templatesQuery.data.some((t) => t.slug === slug)) return;
     if (slug) setUnknownTemplate(true);
-    setSlug(pickDefaultTemplate(templatesQuery.data, requestedMode ?? 'i2i')?.slug ?? null);
-  }, [templatesQuery.data, slug, requestedMode]);
+    setSlug(pickDefaultTemplate(templatesQuery.data, requestedImageMode ?? 'i2i')?.slug ?? null);
+  }, [templatesQuery.data, slug, requestedImageMode]);
 
   const templateQuery = useQuery({
     queryKey: queryKeys.templates.detail(slug ?? ''),
@@ -92,8 +101,9 @@ export const StudioGenerator: React.FC = () => {
 
   // ---- form state --------------------------------------------------------------------------------------
   const [values, setValues] = useState<Record<string, string>>({});
-  // A deep link (`?mode=t2i`) picks the mode; the template then narrows it to what it allows.
-  const [mode, setMode] = useState<GenerationMode>(requestedMode ?? 'i2i');
+  // A deep link (`?mode=t2i|i2i|video`) picks the mode; the template then narrows an image mode to what it allows.
+  const [mode, setMode] = useState<StudioMode>(requestedMode ?? 'i2i');
+  const isVideo = mode === 'video';
   const [remarks, setRemarks] = useState(() => readStudioHandoff(location.state)?.prompt.slice(0, MAX_REMARKS_LENGTH) ?? '');
   const [consent, setConsent] = useState(false);
   const [uploadRole, setUploadRole] = useState<ReferenceRole>('product');
@@ -108,7 +118,7 @@ export const StudioGenerator: React.FC = () => {
   useEffect(() => {
     if (!template) return;
     setValues(initialSlotValues(template));
-    setMode((current) => pickMode(template, current));
+    setMode((current) => pickStudioMode(template, current));
     setUploadRole(defaultUploadRole(template));
     setConsent(false);
     setFieldErrors({});
@@ -128,7 +138,11 @@ export const StudioGenerator: React.FC = () => {
   const resultUrl = done?.result_url ? fileUrl(done.result_url) : null;
 
   const analysis = usePromptAnalysis(remarks);
-  const modes = template ? allowedModes(template) : [];
+  // Image modes the template allows (for the "only supports" hint); the dropdown also always offers video.
+  const imageModes = template ? allowedModes(template) : [];
+  const options = modeOptions(template);
+  const selectedOption = studioModeOption(mode);
+  const ModeIcon = MODE_ICONS[mode];
   const usedRefs = mode === 'i2i' ? refSet.ready : [];
   const consentNeeded = needsConsent(template, usedRefs);
   const block = submitBlock({
@@ -169,6 +183,8 @@ export const StudioGenerator: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Video mode renders from a finished poster in its own section: it must never create a generation.
+    if (!isImageMode(mode)) return;
     if (submittingRef.current || block || !template) return;
     setSubmitProblem(null);
 
@@ -242,16 +258,57 @@ export const StudioGenerator: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* ── LEFT COLUMN: TEMPLATE, SLOTS, REFERENCES ── */}
-        <div className="lg:col-span-7 bg-white rounded-3xl border border-[#CBD5E1] p-6 sm:p-8 shadow-sm space-y-6">
+        <div className={`${isVideo ? 'lg:col-span-12' : 'lg:col-span-7'} bg-white rounded-3xl border border-[#CBD5E1] p-6 sm:p-8 shadow-sm space-y-6`}>
           <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <h2 className="text-lg font-black text-[#0F172A] tracking-tight flex items-center gap-2">
               <Sliders className="w-5 h-5 text-[#2563EB]" />
-              <span>Pengaturan Desain Poster</span>
+              <span>{isVideo ? 'Pengaturan Video Reel' : 'Pengaturan Desain Poster'}</span>
             </h2>
             <span className="text-xs text-slate-500 font-medium">Langkah Praktis</span>
           </div>
 
-          {templatesQuery.isLoading ? (
+          {/* Mode: image modes narrowed to the template, video always available (it works on finished posters). */}
+          <div>
+            <label htmlFor="studio-mode" className="block text-xs font-bold text-[#0F172A] mb-2">
+              Metode Pembuatan
+            </label>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 grid place-items-center w-7 h-7 rounded-lg bg-gradient-to-br from-[#1800ad] to-[#2563EB] text-white shadow-sm shadow-blue-500/25">
+                <ModeIcon className="w-3.5 h-3.5" aria-hidden="true" />
+              </span>
+              <select
+                id="studio-mode"
+                value={mode}
+                disabled={generating}
+                aria-describedby="studio-mode-help"
+                onChange={(e) => {
+                  setMode(e.target.value as StudioMode);
+                  setFieldErrors((prev) => {
+                    const { reference_ids: _r, mode: _m, ...rest } = prev;
+                    return rest;
+                  });
+                }}
+                className="w-full appearance-none rounded-2xl border border-[#CBD5E1] bg-[#F8FAFC] hover:bg-white hover:border-[#93C5FD] pl-12 pr-10 py-3 text-sm font-extrabold text-[#0F172A] shadow-xs transition-colors cursor-pointer focus:outline-none focus-visible:border-[#2563EB] focus-visible:ring-4 focus-visible:ring-blue-200 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {options.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" aria-hidden="true" />
+            </div>
+            <p id="studio-mode-help" className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+              {selectedOption.help}
+              {!isVideo && imageModes.length === 1 && (
+                <> Template ini hanya mendukung metode {imageModes[0] === 'i2i' ? 'Foto ke Gambar' : 'Teks ke Gambar'} untuk gambar.</>
+              )}
+            </p>
+          </div>
+
+          {isVideo ? (
+            <VideoStudioSection preferredPosterId={done?.id ?? null} />
+          ) : templatesQuery.isLoading ? (
             <LoadingBlock label="Memuat template..." />
           ) : templatesQuery.isError ? (
             <ErrorBlock error={templatesQuery.error} onRetry={() => void templatesQuery.refetch()} title="Template tidak dapat dimuat" />
@@ -277,39 +334,6 @@ export const StudioGenerator: React.FC = () => {
               ) : (
                 <>
                   {template.description && <p className="text-xs text-slate-500 leading-relaxed">{template.description}</p>}
-
-                  {/* Mode: only what the template allows. */}
-                  <div>
-                    <span className="block text-xs font-bold text-[#0F172A] mb-2">Metode Pembuatan</span>
-                    <div className="inline-flex items-center gap-1.5 p-1 rounded-full bg-[#F8FAFC] border border-[#CBD5E1]" role="radiogroup" aria-label="Metode pembuatan">
-                      {modes.map((m) => (
-                        <button
-                          key={m}
-                          type="button"
-                          role="radio"
-                          aria-checked={mode === m}
-                          disabled={generating}
-                          onClick={() => {
-                            setMode(m);
-                            setFieldErrors((prev) => {
-                              const { reference_ids: _r, mode: _m, ...rest } = prev;
-                              return rest;
-                            });
-                          }}
-                          className={`px-5 py-2 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
-                            mode === m ? 'bg-[#2563EB] text-white shadow-xs' : 'text-slate-600 hover:text-[#0F172A]'
-                          }`}
-                        >
-                          {MODE_LABELS[m]}
-                        </button>
-                      ))}
-                    </div>
-                    {modes.length === 1 && (
-                      <p className="text-[11px] text-slate-500 mt-1.5">
-                        Template ini hanya mendukung metode {modes[0] === 'i2i' ? 'Foto ke Gambar' : 'Teks ke Gambar'}.
-                      </p>
-                    )}
-                  </div>
 
                   <div className="flex items-center justify-between rounded-2xl bg-[#F8FAFC] border border-slate-200 px-4 py-2.5">
                     <span className="text-xs font-bold text-[#0F172A]">Ukuran &amp; Rasio Desain</span>
@@ -441,7 +465,8 @@ export const StudioGenerator: React.FC = () => {
           )}
         </div>
 
-        {/* ── RIGHT COLUMN: PREVIEW, STEPPER, DOWNLOAD ── */}
+        {/* ── RIGHT COLUMN: PREVIEW, STEPPER, DOWNLOAD (image modes; video mode has its own preview) ── */}
+        {!isVideo && (
         <div className="lg:col-span-5 bg-white rounded-3xl border border-[#CBD5E1] p-6 sm:p-8 shadow-sm space-y-5 lg:sticky lg:top-24">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 gap-3">
             <div>
@@ -519,6 +544,7 @@ export const StudioGenerator: React.FC = () => {
             </button>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

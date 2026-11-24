@@ -136,7 +136,7 @@ const sections: LegalSection[] = [
           Syarat ini dapat diperbarui; tanggal di bagian atas halaman menunjukkan versi terbaru, dan perubahan penting akan diberitahukan di dalam aplikasi. Syarat ini tunduk pada hukum Republik Indonesia.{' '}
           <Todo>pilihan penyelesaian sengketa dan pengadilan yang berwenang</Todo>
         </p>
-        <p>Pertanyaan: kontak@sukamenak.org atau WhatsApp +62 812-3456-7890.</p>
+        <p>Pertanyaan: kontak@sukamenak.org.</p>
       </>
     ),
   },

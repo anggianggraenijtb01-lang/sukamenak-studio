@@ -4,7 +4,15 @@
  * Prefer `useAuth()` in components; these are for the AuthProvider and for tests.
  */
 import { apiClient } from './client';
-import type { LoginRequest, LogoutResponse, RegisterRequest, Session } from './types';
+import type {
+  ForgotPasswordResponse,
+  LoginRequest,
+  LogoutResponse,
+  RegisterRequest,
+  ResetPasswordRequest,
+  ResetPasswordResponse,
+  Session,
+} from './types';
 
 /** `POST /auth/register`: always creates a creator. The role is never sent. */
 export async function register(body: RegisterRequest): Promise<Session> {
@@ -29,6 +37,24 @@ export async function login(body: LoginRequest): Promise<Session> {
 export function restoreSession(): Promise<Session | null> {
   return apiClient.restoreSession();
 }
+
+/**
+ * `POST /auth/forgot-password`: emails a reset link if the address has an account. The answer is always
+ * `{ sent: true }`, so the UI must never say whether the address exists.
+ */
+export const forgotPassword = (email: string) =>
+  apiClient.request<ForgotPasswordResponse>('/auth/forgot-password', { method: 'POST', body: { email }, auth: false });
+
+/**
+ * `POST /auth/reset-password`: sets a new password with the emailed token. Does not sign the user in.
+ * Errors: `INVALID_RESET_TOKEN` (unknown, expired or already used), `VALIDATION_ERROR`, `RATE_LIMIT_EXCEEDED`.
+ */
+export const resetPassword = (body: ResetPasswordRequest) =>
+  apiClient.request<ResetPasswordResponse>('/auth/reset-password', {
+    method: 'POST',
+    body: { token: body.token, new_password: body.new_password },
+    auth: false,
+  });
 
 /** `POST /auth/logout`: revokes the token family and clears the cookie. The local session is cleared even if the call fails. */
 export async function logout(): Promise<void> {

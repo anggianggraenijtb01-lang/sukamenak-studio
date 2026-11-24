@@ -26,6 +26,7 @@
     "seed": "tsx src/seed/index.ts",
     "create-admin": "tsx src/seed/createAdmin.ts",
     "models:smoke": "tsx src/tools/modelSmoke.ts",
+    "models:activate": "tsx src/tools/activateModels.ts",
     "benchmark": "tsx src/tools/benchmark.ts",
     "e2e:db": "tsx src/tools/e2eDb.ts"
   },
